@@ -132,15 +132,7 @@ var debugging&&console.log = debugging ? function (msg) {
     var hrs = 60*60*1000;
     var days = 24*hrs;
     var weeks = 7*days;
-    srsintervals.push(0);
-    srsintervals.push(4*hrs);
-    srsintervals.push(8*hrs);
-    srsintervals.push(1*days);
-    srsintervals.push(3*days);
-    srsintervals.push(1*weeks);
-    srsintervals.push(2*weeks);
-    srsintervals.push(730*hrs);//average month
-    srsintervals.push(2922*hrs);//average 4 months
+    srsintervals=[0, 4*hrs, 8*hrs, 1*days, 3*days, 1*weeks, 2*weeks, 730*hrs, 2922*hrs];
 
     //---
     convertStorage();
