@@ -15,10 +15,7 @@
 // @run-at      document-end
 // @grant       none
 // ==/UserScript==
-function main(){
-    "use strict";
 
-    $("head").prepend("<script src='https://cdn.jsdelivr.net/jquery.mockjax/1.6.1/jquery.mockjax.js'></script>");
 /*
  *  This script is licensed under the Creative Commons License
  *  "Attribution-NonCommercial 3.0 Unported"
@@ -26,120 +23,106 @@ function main(){
  *  More information at:
  *  http://creativecommons.org/licenses/by-nc/3.0/
  */
+
+ 
+ /** Describes any object that can be reviewed or learned, includes IRadical, IKanji, and IVocabulary
+ * @typedef {Object} Task
+ * @property {boolean|string} locked - locked
+ * @property {boolean|string} manualLock - manualLock
+ */
+ 
+ 
+function main(){
+    "use strict";
+
+    $("head").prepend("<script src='https://cdn.jsdelivr.net/jquery.mockjax/1.6.1/jquery.mockjax.js'></script>");
+
     var APIkey = "YOUR_API_HERE";
     var locksOn = true; //Disable vocab locks (unlocked items persist until deleted)
     var lockDB = true; //Set to false to unlock Kanji is not available on WaniKani (ie. not returned by API)
     var reverse = true; //Include English to ひらがな reading reviews
     var debugging = true;
-    //debugging = false;
     var asWK = true; //Push user reviews into the main WK review queue
 
     // shut up JSHint
     /* jshint multistr: true , jquery: true, expr: true, indent:2 */
     /* global window, wanakana, XDomainRequest */
 
-
-    /*
- *  Debugging
- */
-    /*
-var debugging&&console.log = debugging ? function (msg) {
-    if (typeof msg === 'string') {
-        window.console.log("WKSS: " + msg);
-    } else {
-        window.console.log("WKSS: ", msg);
-    }
-} : function () {
-};
-*/
-
-    //convert localstorage User-Vocab for updates
-    function convertStorage(vocab){
-        vocab = vocab || localGet("User-Vocab") || [];
-        var v = vocab.length;
-        while (v--){
-            if (typeof vocab[v].due === "undefined" ||
-                vocab[v].due !== vocab[v].date + srsintervals[vocab[v].level]
-               ){
-            }
-        }
-        localSet("User-Vocab", vocab);
-    }
-
+    /** Debugging
+	 */
+	var debugging&&console.log = debugging ? function (msg) {
+		if (typeof msg === 'string') {
+			window.console.log("WKSS: " + msg);
+		} else {
+			window.console.log("WKSS: ", msg);
+		}
+	} : function () {
+	};
+	
     $("head").prepend('<script src="https://rawgit.com/WaniKani/WanaKana/master/lib/wanakana.js" type="text/javascript"></script>');
-
-    //track versions & datatypes
-    var VersionData = {
-        v: "0.1.13",
-        propertyType: {meaning: "array", reading: "array", kanji: "string", i:"number", components: "array", date: "number", due: "number", locked: "string", manualLock: "string"},
-        propertyDesc: {meaning: "list of meanings", reading: "list of readings", kanji: "item prompt", i:"item index", components: "kanji found in word", date: "timestamp of new level", due: "timestamp of item's next review", locked: "indicator of whether components are eligible", manualLock: "latch for 'locked' so failing components don't re-lock the item"}
+    
+    var localSet = function(strName, obj){
+        debugging&&console.log(strName + " is of type " + typeof obj);
+        if (typeof obj === "object")
+            obj=JSON.stringify(obj);
+        localStorage.setItem(strName, obj);
     };
-    localSet("WKSSdata", VersionData);
 
+	//track versions & datatypes
+	localSet("WKSSdata", {
+        v: "0.1.13",
+        propertyType: {
+			meaning: "array", reading: "array", kanji: "string", i:"number", components: "array", date: "number", due: "number", locked: "string", manualLock: "string"
+		},
+        propertyDesc: {
+			meaning: "list of meanings", reading: "list of readings", kanji: "item prompt", i:"item index", components: "kanji found in word", date: "timestamp of new level", due: "timestamp of item's next review", locked: "indicator of whether components are eligible", manualLock: "latch for 'locked' so failing components don't re-lock the item"
+		}
+    });
 
-    /*
- *  Settings and constants
- */
-
-    function getSetApi(APIkey){
-
-        var storedAPI = localStorage.getItem('WaniKani-API');
-        if (APIkey === "YOUR_API_HERE"){
-            if (storedAPI !== null){
-                APIkey = localStorage.getItem('WaniKani-API');
-            }
-        }else{
-            //API has been set in code.
-            if (storedAPI !== APIkey){
-                localSet('WaniKani-API', APIkey);//overwrite with new API
-            }
-        }
-        return APIkey;
-    }
-    APIkey = getSetApi(APIkey);
-
-
-    //###############################################
     // Config for window sizes in pixels
+	var windowConfig = {
+		add:{height: "300px", width: "300px"},
+		exportImport:{height: "275px", width: "390px"},
+		edit:{height: "380px", width: "800px"},
+		study:{height: "auto", width: "600px"}, //height : auto
+		result:{height: "500px", width: "700px"}
+	};
 
-    // add Window, standard 300 x 300
-    var addWindowHeight = 300;
-    var addWindowWidth = 300;
-
-    // export and import Window, standard 275 x 390
-    var exportImportWindowHeight = 275;
-    var exportImportWindowWidth = 390;
-
-    // edit Window, standard 380 x 800
-    var editWindowHeight = 380;
-    var editWindowWidth = 800;
-
-    // study(review) Window, standard 380 x 600
-    var studyWindowWidth = 600;
-
-    // result Window, standard 500 x 700
-    var resultWindowHeight = 500;
-    var resultWindowWidth = 700;
-
-    //###############################################
-
+    /** Settings and constants
+	 */
     var errorAllowance = 4; //every x letters, you can make one mistake when entering the meaning
 
     //srs 4h, 8h, 24h, 3d (guru), 1w, 2w (master), 1m (enlightened), 4m (burned)
-    var srslevels = ["Started", "Apprentice", "Apprentice", "Apprentice", "Apprentice", "Guru", "Guru", "Master", "Enlightened", "Burned"];
-
-    var srsintervals = [];
+    
     var hrs = 60*60*1000;
     var days = 24*hrs;
     var weeks = 7*days;
-    srsintervals=[0, 4*hrs, 8*hrs, 1*days, 3*days, 1*weeks, 2*weeks, 730*hrs, 2922*hrs];
+	var srsObject = [
+		{level: 0, rank: "Started",		duration: 0}, 
+		{level: 1, rank: "Apprentice",	duration: 4*hrs},
+		{level: 2, rank: "Apprentice",	duration: 8*hrs},
+		{level: 3, rank: "Apprentice",	duration: 1*days},
+		{level: 4, rank: "Apprentice",	duration: 3*days},
+		{level: 5, rank: "Guru",		duration: 1*weeks},
+		{level: 6, rank: "Guru",		duration: 2*weeks},
+		{level: 7, rank: "Master",		duration: 730*hrs},
+		{level: 8, rank: "Enlightened",	duration: 2922*hrs},
+		{level: 9, rank: "Burned"}
+	];
+	var hijackRequests = require('./hijackRequests.js');
 
-    //---
-    convertStorage();
-
-
-    //GM_addStyle shim for compatibility
-    function gM_addStyle(CssString){
+	var localGet = function(strName){
+        var strObj = localStorage.getItem(strName);
+        return parseString(strObj);
+    };
+    
+	// Initialise User-Vocab
+	if (!localGet("User-Vocab")){
+		localSet("User-Vocab", []);
+	}
+	
+	//GM_addStyle shim for compatibility with greasemonkey
+    var gM_addStyle = function(CssString){
         //get DOM head
         var head = document.getElementsByTagName('head')[0];
         if (head) {
@@ -150,11 +133,10 @@ var debugging&&console.log = debugging ? function (msg) {
             //insert DOM style into head
             head.appendChild(style);
         }
-    }
+    };
 
-    /*
- *  JQuery fixes
- */
+    /**  JQuery fixes
+	 */
     $("[placeholder]").focus(function () {
         var input = $(this);
         if (input.val() == input.attr("placeholder")) {
@@ -178,90 +160,198 @@ var debugging&&console.log = debugging ? function (msg) {
         });
     });
 
+	/** Handle the users API key.
+	* @param {string} APIkey - the users API key to set. If given "YOUR_API_HERE", it will return the key in browser storage.
+	* @returns {string} the users API key as supplied and stored, or in the case of "YOUR_API_HERE" being passed, the stored key.
+	*/
+    var getSetApi = function(APIkey){
+        var storedAPI = localStorage.getItem('WaniKani-API');
+        if (APIkey === "YOUR_API_HERE"){
+            if (storedAPI !== null){
+                APIkey = storedAPI;
+            }
+        }
+		else{
+            //API has been set in code.
+            if (storedAPI !== APIkey){
+                localSet('WaniKani-API', APIkey);//overwrite with new API
+            }
+        }
+        return APIkey;
+    };
+    APIkey = getSetApi(APIkey);
 
     //--------------Start Insert Into WK Review Functions--------------
 
-    var WKItems = [];
-    var userVocab = localGet("User-Vocab")||[];
-    console.groupCollapsed("Loading Items");
-    for (var i = 0; i < userVocab.length; i++){
-        var dueNow = (userVocab[i].locked === "no" && userVocab[i].level < 9 && Date.now() > userVocab[i].due);
-
-        if (dueNow){
-            if (userVocab[i].kanji.length * userVocab[i].meaning[0].length * userVocab[i].reading[0].length){
-                //Sorry, we need all three to add to WK review, no kana only without readings etc.
-                debugging&&console.log("item:" + userVocab[i].kanji + ", " + userVocab[i].locked +" === \"no\" && " + userVocab[i].level + " < 9 && " + Date.now() + " > " + userVocab[i].due);
-                debugging&&console.log(dueNow);
-                WKItems.push(wKSS_to_WK(userVocab[i]));
-            }else{
-                debugging&&console.log("Item " + userVocab[i].kanji + " could not be added, it is missing one or more of the essential fields for a WK vocabulary review");
-            }
-        }
-    }
-    console.groupEnd();//That should be a lot neater.
-
-    if (userVocab.length){
-        console.log("first item regardless of being added to queue:", wKSS_to_WK(userVocab[0]), JSON.stringify(wKSS_to_WK(userVocab[0])));
-    }
-
-    console.log(WKItems);
-    //where the magic happens
-    if (asWK){
-        $.jStorage.listenKeyChange("reviewQueue",joinReviews);
-    }
-
-
-
-    function joinReviews(){
+	/** Messing around with vanilla WaniKani review variables
+	*/
+    var joinReviews = function(WKItems){
         console.log("joining reviews");
         $.jStorage.stopListening("reviewQueue", joinReviews);
         var WKreview = $.jStorage.get("reviewQueue")||[];
         var WKcombined = WKreview.concat(WKItems);
         $.jStorage.set("reviewQueue", WKcombined);
-    }
+    };
 
-    function wKSS_to_WK(WKSSItem){
+    var WKItems = [];
+    console.groupCollapsed("Loading Items");
+	
+	var wKSS_to_WK = function(WKSSItem){
         var WKItem = {};
         //    WKItem.aud = "";
-        WKItem.en = WKSSItem.meaning.map(function(s) { return s.trim().replace(/\b\w/g , function(m){ return m.toUpperCase(); }); }); //trim whitespace and capitalize words
+        WKItem.en = WKSSItem.meaning.map(function(s) {
+			 //trim whitespace and capitalize words
+			 return s.trim().replace(/\b\w/g , function(m){
+				return m.toUpperCase();
+			});
+		});
         WKItem.id = "WKSS" + WKSSItem.i;
         WKItem.kana = WKSSItem.reading;
         WKItem.srs = WKSSItem.level+1;//WK starts levels from 1, WKSS starts them from 0
+        WKItem.voc = WKSSItem.kanji;
+        WKItem.components = WKSSItem.components;
 
         WKItem.syn = [];
         //Add synonyms of strings without bracketed info to get around checking the full string including brackets
-        for (var m = 0; m < WKSSItem.meaning.length; m++){
-            var openBracket = WKSSItem.meaning[m].indexOf("(");
-            if (openBracket !== -1 && WKSSItem.meaning[m].indexOf(")") !== -1){
-                WKItem.syn.push(WKSSItem.meaning[m].substr(0, openBracket).trim().replace(/\b\w/g , function(m){ return m.toUpperCase();}));
+        WKSSItem.meaning.forEach(function(meaning){
+            var openBracket = meaning.indexOf("(");
+            if (openBracket !== -1 && meaning.indexOf(")") !== -1){
+                WKItem.syn.push(meaning.substr(0, openBracket).trim().replace(/\b\w/g , function(m){ return m.toUpperCase();}));
+            }
+        }, this);
+
+        return WKItem;
+    };
+
+	var loadTasks = function(userVocab, i, userVocabs){
+        var dueNow = (userVocab.locked === "no" && userVocab.level < 9 && Date.now() > userVocab.due);
+
+        if (dueNow){
+            if (userVocab.kanji.length * userVocab.meaning[0].length * userVocab.reading[0].length){
+                //Sorry, we need all three to add to WK review, no kana only without readings etc.
+                debugging&&console.log("item:" + userVocab.kanji + ", " + userVocab.locked +" === \"no\" && " + userVocab.level + " < 9 && " + Date.now() + " > " + userVocab.due);
+                debugging&&console.log(dueNow);
+                WKItems.push(wKSS_to_WK(userVocab));
+            }else{
+                debugging&&console.log("Item " + userVocab.kanji + " could not be added, it is missing one or more of the essential fields for a WK vocabulary review");
             }
         }
-
-        WKItem.voc = WKSSItem.kanji;
-        //
-        WKItem.components = WKSSItem.components;
-        return WKItem;
+    };
+	
+    var userVocabs = localGet("User-Vocab")||[];
+    userVocabs.forEach(loadTasks, this);
+    console.groupEnd();
+	
+    //where the magic happens
+    if (asWK){
+        $.jStorage.listenKeyChange("reviewQueue", function(){joinReviews(WKItems);});
     }
 
-var hijackRequests = require('./hijackRequests.js');
+	var generateReviewList = function(reviewActive) {
+        //don't interfere with an active session
+        if (reviewActive){
+            document.getElementById('user-review').innerHTML = "Review in Progress";
+            return;
+        }
 
- /*
- * populate reviews when menu button pressed
- */
+        debugging&&console.log("generateReviewList()");
+        // function generateReviewList() builds a review session and updates the html menu to show number waiting.
+        var numReviews = 0;
+        var soonest = Infinity;
+        var next;
 
+        var reviewList = [];
+
+        //check to see if there is vocab already in offline storage
+        if (localStorage.getItem('User-Vocab')) {
+            var vocabList = getVocList();
+            debugging&&console.log(vocabList);
+            var now = Date.now();
+
+            //for each vocab in storage, get the amount of time vocab has lived
+            //var i = vocabList.length;
+            //while(i--){
+			vocabList.forEach(function(task, i){
+                var due = task.date + srsObject[task.level].duration;
+
+                // if tem is unlocked and unburned
+                if (task.level < 9 &&
+                    (task.manualLock === "no" || task.manualLock === "n" ||
+                     task.manualLock ==="DB" && !lockDB )){
+                    // if it is past review time
+                    if(now >= due) {
+                        // count vocab up for review
+                        numReviews++;
+
+                        // add item-meaning object to reviewList
+                        // have made this optional for surname lists etc.
+                        if (task.meaning[0] !== "") {
+                            //Rev_Item object args: prompt, kanji, type, solution, index
+                            var revItem = new Rev_Item(task.kanji, task.kanji, "Meaning", task.meaning, i);
+                            reviewList.push(revItem);
+						}
+
+                        // reading is optional, if there is a reading for the vocab, add its object.
+                        if (task.reading[0] !== "") {
+                            //Rev_Item object args: prompt, kanji, type, solution, index
+                            var revItem2 = new Rev_Item(task.kanji, task.kanji, "Reading", task.reading, i);
+                            reviewList.push(revItem2);
+                        }
+
+                        //if there is a meaning and reading, and reverse flag is true, test reading from english
+                        if (task.reading[0] !== "" && task.meaning[0] !== "" && reverse){
+                            //Rev_Item object args: prompt, kanji, type, solution, index
+                            var revItem3 = new Rev_Item(task.meaning.join(", "), task.kanji, "Reverse", task.reading, i);
+                            reviewList.push(revItem3);
+                        }
+
+                    }
+					else{//unlocked/unburned but not time to review yet
+                        debugging&&console.log("setting soonest");
+                        next = due - now;
+						soonest = Math.min(soonest, next);
+                    }
+				}//end if item is up for review
+			}// end iterate through vocablist
+		}// end if localStorage
+        if (reviewList.length !== 0){
+            //store reviewList in current session
+            sessionSet('User-Review', JSON.stringify(reviewList));
+            debugging&&console.log(reviewList);
+        }
+		else{
+            debugging&&console.log("reviewList is empty: "+JSON.stringify(reviewList));
+			document.getElementById('user-review').innerHTML = soonest<Infinity? "Next Review in "+ms2str(soonest) : "No Reviews Available";
+		}
+        var strReviews = numReviews.toString();
+
+        /* If you want to do the 42+ thing.
+		 if (numReviews > 42) {
+		 strReviews = "42+"; //hail the crabigator!
+		 }
+		//*/
+
+        // return the number of reviews
+        debugging&&console.log(numReviews.toString() +" reviews created");
+        if (numReviews > 0){
+            var reviewString = (soonest !== void 0)? "<br/>\
+More to come in "+ms2str(soonest):"";
+            document.getElementById('user-review').innerHTML = "Review (" + strReviews + ")" + reviewString;
+        }
+    };
+
+	/** populate reviews when menu button pressed
+	*/
     window.generateReviewList = function() {
         //if menu is invisible, it is about to be visible
         if ( $("#WKSS_dropdown").is(":hidden") ){
             //This is really the only time it needs to run
             //unless we want to start updating in realtime by keeping track of the soonest item
-            generateReviewList();
+            generateReviewList(reviewActive);
         }
     };
-
- /*
- *  Add Item
- */
-    // event function to open "add window" and close any other window that might be open at the time.
+	/**  Add Item: event function to open "add window" and close any other window that might be open at the time.
+	*/
     window.WKSS_add = function () {
         //show the add window
         $("#add").show();
@@ -271,101 +361,15 @@ var hijackRequests = require('./hijackRequests.js');
         $("#edit").hide();
         $("#selfstudy").hide();
     };
-
-    //'add window' html text
-    var addHtml = '\n\
-<div id="add" class="WKSS">\n\
-<form id="addForm">\n\
-<button id="AddCloseBtn" class="wkss-close" type="reset"><i class="icon-remove"></i></button>\n\
-<h1>Add a new Item</h1>\n\
-<input type="text" id="addKanji" placeholder="Enter 漢字, ひらがな or カタカナ">\n\
-<input type="text" id="addReading" title="Leave empty to add vocabulary like する (to do)" placeholder="Enter reading">\n\
-<input type="text" id="addMeaning" placeholder="Enter meaning">\n\
-\n\
-<p id="addStatus">Ready to add..</p>\n\
-<button id="AddItemBtn" type="button">Add new Item</button>\n\
-</form>\n\
-</div>\n';
-
-    //add html to page source
-    $("body").append(addHtml);
-
+	
+	var addElement = require('./addelement.js');
+	//add html to page source
+    $("body").append(addElement);
     //hide add window ("div add" code that was just appended)
     $("#add").hide();
 
-    function handleAddClick(){
-
-        var kanji = $("#addKanji").val().toLowerCase();
-        var reading = $("#addReading").val().toLowerCase().split(/[,、]+\s*/); //split at , or 、followed by 0 or any number of spaces
-        var meaning = $("#addMeaning").val().toLowerCase().split(/[,、]+\s*/);
-        var success = false; //initalise values
-        var meanlen = 0;
-
-        var i = meaning.length;
-        while (i--){
-            meanlen += meaning[i].length;
-        }
-
-        //input is invalid: prompt user for valid input
-        var item = {};
-        if (kanji.length === 0 || meanlen === 0) {
-            $("#addStatus").text("One or more required fields are empty!");
-            if (kanji.length === 0) {
-                $("#addKanji").addClass("error");
-            } else {
-                $("#addKanji").removeClass("error");
-            }
-            if (meanlen === 0) {
-                $("#addMeaning").addClass("error");
-            } else {
-                $("#addMeaning").removeClass("error");
-            }
-        } else {
-            debugging&&console.log("building item: "+kanji);
-            item.kanji = kanji;
-            item.reading = reading; //optional
-            item.meaning = meaning;
-
-            success = true;
-            debugging&&console.log("item is valid");
-        }
-
-        //on successful creation of item
-        if (success) {
-            //clear error layout to required fields
-            $("#addKanji").removeClass("error");
-            $("#addMeaning").removeClass("error");
-
-
-
-            //if there are already user items, retrieve vocabList
-            // var vocabList = [];
-            var vocabList = getFullList();
-
-            debugging&&console.log("vocabList retrieved, length: "+vocabList.length);
-            //check stored user items for duplicates ****************** to do: option for editing duplicate item with new input
-            if(checkForDuplicates(vocabList,item)) {
-                $("#addStatus").text("Duplicate Item detected!");
-                $("#addKanji").addClass("error");
-                return;
-            }
-
-            setVocItem(item);
-
-            debugging&&console.log("clear form");
-            $("#addForm")[0].reset();
-
-            //--------------------------------------------------------------------------------------------------------
-            if (item.manualLock === "yes" || item.manualLock === "DB" && lockDB){
-                $("#addStatus").html("<i class=\"icon-lock\"></i> Added locked item");
-            } else {
-                $("#addStatus").html("<i class=\"icon-unlock\"></i>Added successfully");
-            }
-            //--------------------------------------------------------------------------------------------------------
-        }
-    }
-
-
+    var handleAddClick = require('./handleAddClick.js');
+	
     //function to fire on click event for "Add new Item"
     $("#AddItemBtn").click(function () {
         handleAddClick();
@@ -379,40 +383,32 @@ var hijackRequests = require('./hijackRequests.js');
         $("#addMeaning").removeClass("error");
     });
 
-
-
-    //---Function wrappers to facilitate use of one localstorage array
-    //---Maintains data integrity between previously two (vocab and srs)
-
-
-    function setSrsItem(srsitem,srsList){
+    /** Keeps legacy srsList updated.
+	* @depreciate
+	* @param {SrsItem} srsitem
+	* @param {Array.<SrsItem>} srsList
+	* @returns {Array.<SrsItem>} The srs data for a task. Or null if no srsList was provided.
+	*/
+    //var setSrsItem = function(srsitem, srsList){
+    var updateSrsInList = function(srsitem, srsList){
         var index = srsitem.i;
-        debugging&&console.log("setSrsItem: ");
-
         if(srsList){
             if(srsList[index].kanji===srsitem.kanji){// try search by index
-
                 debugging&&console.log("success: "+srsitem.kanji+" found at index "+ index);
                 //replace only the srs parts of the item
                 srsList[index].date = srsitem.date;
                 srsList[index].level = srsitem.level;
                 srsList[index].locked = srsitem.locked;
                 srsList[index].manualLock = srsitem.manualLock;
-            }else{ //backup plan (cycle through list?)
-                debugging&&console.log("SRS Kanji not found in vocablist, needs work");
-
             }
-            debugging&&console.log("item: ");
             return srsList;
         }
-    }
-
-    function getSrsList(){
-        var srsList = getVocList();
-        return srsList;
-    }
-
-    function getVocList(){
+		else{
+			return null;
+		}
+    };
+    
+    var getVocList = function(){
         var vocList = JSON.parse(localStorage.getItem('User-Vocab'))||[];
         if (vocList){
             var v=vocList.length;
@@ -420,34 +416,26 @@ var hijackRequests = require('./hijackRequests.js');
                 vocList[v].i = v; //set index for item (->out)
             }
         }
-        debugging&&console.log("getVocList: ");
         return vocList;
-    }
+    };
 
-    function setVocItem(item){
-
+    var setVocItem = function(item){
         //Assumption: item comes only with kanji, reading and meaning
-
         item.level = 0;
         item.date = Date.now();
         item.manualLock = "";
         item = setLocks(item);
-        item.due = item.date + srsintervals[item.level]; //0.1.9 adding in 'due' property to make review building simpler
+		 //0.1.9 adding in 'due' property to make review building simpler
+        item.due = item.date + srsObject[item.level].duration;
 
-        var found = false;
         var vocList = localGet('User-Vocab')||[];
 
-        var v = vocList.length;
-        while(v--){
-            if (vocList[v].kanji === item.kanji){
-                found = true;
-                debugging&&console.log("duplicate found, skipping item (give options in future)");
-
-                //add meaning and reading to existing item
-                //        vocList[v].meaning = item.meaning;
-                //      vocList[v].reading = item.reading;
-            }
-        }
+		var found = vocList.find(function(task){
+            return task.kanji === item.kanji;
+        }, this);
+		//add meaning and reading to existing item
+		//        vocList[v].meaning = item.meaning;
+		//      vocList[v].reading = item.reading;
         if (!found) {
             //provide index for faster searches
             debugging&&console.log(item.kanji +" not found in vocablist, adding now");
@@ -456,77 +444,22 @@ var hijackRequests = require('./hijackRequests.js');
 
             localSet('User-Vocab',vocList);
         }
-    }
-
-    function getFullList(){
-        var fullList = JSON.parse(localStorage.getItem('User-Vocab'))||[];
-        if(!fullList){
-            fullList=[];
-        }
-        return fullList;
-    }
+    };
+    /** Checks if an item's kanji is represented in a list
+	* @returns {boolean}
+	*/
+    var checkForDuplicates = function(list, item){
+		return list.some(function(a){return a.kanji === item.kanji;});
+	};
 
 
-
-    //checks if an item is present in a list
-    function checkForDuplicates(list, item) {
-        debugging&&console.log("Check for dupes with:" + item.kanji);
-
-        var i = list.length;
-        while(i--){
-            list[i].i = i; //set index property for quick lookup
-            if(list[i].kanji == item.kanji)
-
-                return true;
-        }
-        return false;
-    }
-
-    //manages .locked property of srsitem
-    /*This function manages the .locked and manualLock properties of srsitem
- .locked is a real time evaluation of the item (is any of the kanji in the word locked?)
- .manualLock will return 'no' if .locked has ever returned 'no'.
- This is to stop items being locked again after they have been unlocked if any
- of the kanji used falls below the unlock threshold
- (eg. if the 勉 in 勉強 falls back to apprentice, we do not want to lock up 勉強 again.)
- */
-    function setLocks(item){
-        //functions:
-        //    isKanjiLocked(srsitem)
-
-        //-----------------------]
-
-        //once manualLock is "no" it stays "no"
-        if (item.manualLock !== "no" && item.manualLock !== "n"){
-
-            var kanjiList = localGet('User-KanjiList')||[];
-
-            item.components = getComponents(item.kanji);
-
-            var kanjiLockedResult = isKanjiLocked(item, kanjiList);
-            item.locked = kanjiLockedResult[0];
-
-            item.manualLock = item.locked;
-        }else{
-            item.manualLock = 'no';
-        }
-
-        debugging&&console.log("setting locks for "+ item.kanji +": locked: "+item.locked+", manualLock: "+ item.manualLock);
-
-        return item;
-    }
-
-    function isKanjiLocked(srsitem, kanjiList){
-        //functions:
-        //    getCompKanji(srsitem.kanji, kanjiList)
-
+    var isKanjiLocked = function(srsitem, kanjiList, locksOn){
         //item unlocked by default
         //may have no kanji, only unlocked kanji will get through the code unflagged
 
+		// Enumeration "yes", "no", "DB"
         var locked = "no";
         if (locksOn){
-
-
             //get the kanji characters in the word.
             var componentList = getCompKanji(srsitem, kanjiList);
             // eg: componentList = getCompKanji("折り紙", kanjiList);
@@ -574,286 +507,38 @@ var hijackRequests = require('./hijackRequests.js');
         }
         //locked will be either "yes","no", or "DB"
         return [locked];
-    }
-    //--------
-
-    /*
- *  Edit Items
- */
-    window.WKSS_edit = function () {
-        generateEditOptions();
-        $("#edit").show();
-        //hide other windows
-        $("#export").hide();
-        $("#import").hide();
-        $("#add").hide();
-        $("#selfstudy").hide();
     };
-
-	/** Builds a node element with an id and className if provided
-	* @param {string} type - The type of element to create ('div', 'p', etc...)
-	* @param {object} [options]
-	* @param {string} options.id - The id of the node
-	* @param {string} options.className - One or more classes for the element seperated by spaces
-	* @returns {HTMLElement} The node built as specified
+    /** Manages the locked and manualLock properties of srsitem. This is to stop items being locked again after they have been unlocked if any of the kanji used falls below the unlock threshold (eg. if the 勉 in 勉強 falls back to apprentice, we do not want to lock up 勉強 again.)
+	* @param {Object} item
+	* @param {string} item.locked - (String enumeration) A real time evaluation of the item (is any of the kanji in the word locked?)
+	* @param {string} item.manualLock - (String enumeration) Will return 'no' if .locked has ever returned 'no'.
+	* @returns {ITask} item
 	*/
-	var buildNode = function(type, options){
-		var id = options.id;
-		var className = options.className;
-		var node = document.createElement(type);
-		if (options) {
-			if (options.className){
-				node.className = options.className;
-			}
-			if (options.id){
-				node.id = options.id;
-			}
-		}
-		return node;
-	};
-	
-	var addEditWindow = function() {
-		var editWindow = buildNode('div', {id: "WKSS-edit", className: "WKSS"});
-		var editForm = buildNode('form', {id: "WKSS-editForm"});
-		var editCloseButton = buildNode('button', {id: "WKSS-editCloseBtn", className: "WKSS-close"});
-		
-		editCloseButton.append(buildNode('i', {className: "icon-remove"}));
-		
-		editForm.appendChild(editCloseButton);
-		editForm.appendChild(buildNode('h1'));// need to add textNode
-		editWindow.appendChild(editForm);
-	}
-	
-    $("body").append("                                                          \
-<div id=\"edit\" class=\"WKSS\">                                               \
-	<form id=\"editForm\">                                                                    \
-		<button id=\"EditCloseBtn\" class=\"wkss-close\" type=\"button\">\
-			<i class=\"icon-remove\"></i>\
-		</button>\
-		\
-		<h1>Edit your Vocab</h1>                                                \
-		\
-		<select id=\"editWindow\" size=\"8\"></select>\
-		<input type=\"text\" id=\"editItem\" name=\"\" size=\"40\" placeholder=\"Select vocab, click edit, change and save!\">\
-		\
-		<p id=\"editStatus\">Ready to edit..</p>\
-		<button id=\"EditEditBtn\" type=\"button\">Edit</button>\
-		<button id=\"EditSaveBtn\" type=\"button\">Save</button>         \
-		<button id=\"EditDeleteBtn\" type=\"button\" title=\"Delete selected item\">Delete</button>         \
-		<button id=\"EditDeleteAllBtn\" type=\"button\" title=\"本当にやるの？\">Delete All</button>   \
-		<button id=\"ResetLevelsBtn\" type=\"button\">Reset levels</button>         \
-	</form>                                                                   \
-</div>");
-    $("#edit").hide();
+    var setLocks = function(item){
+        //once manualLock is "no" it stays "no"
+        if (item.manualLock !== false && item.manualLock !== "no" && item.manualLock !== "n"){
 
-    $("#ResetLevelsBtn").click(function () {
+            var kanjiList = localGet('User-KanjiList')||[];
 
+            item.components = getComponents(item.kanji);
 
-        //var srslist = getSrsList();
-        var srsList = JSON.parse(localStorage.getItem('User-Vocab'))||[];
+            var kanjiLockedResult = isKanjiLocked(item, kanjiList, locksOn);
+            item.locked = kanjiLockedResult[0];
 
-        if (srsList) {
-            var i = srsList.length;
-            while(i--){
-                srsList[i].level = 0;
-                debugging&&console.log("srsList[i].i before: "+srsList[i].i);
-                srsList[i].i=i;
-                debugging&&console.log("srsList[i].i after: "+srsList[i].i);
-                var srsList2 = localGet('User-Vocab')||[];
-
-                srsList2 = setSrsItem(srsList[i],srsList2);
-                localSet('User-Vocab', srsList2);
-
-            }
-        }
-    });
-
-
-    $("#EditEditBtn").click(function () {
-        //get handle for 'select' area
-        var select = document.getElementById("editWindow");
-
-        //get the index for the currently selected item
-        var index = select.selectedIndex; //select.options[select.selectedIndex].value is not required, option values are set to index
-        var vocabList = getVocList();
-        vocabList = vocabList.reverse();
-        document.getElementById("editItem").value = JSON.stringify(vocabList[index]);
-        document.getElementById("editItem").name = index; //using name to save the index
-        $("#editStatus").text('Loaded item to edit');
-    });
-
-    $("#EditSaveBtn").click(function () {
-        if ($("#editItem").val().length !== 0) {
-            //-- be aware
-            //deleting one item may cause mismatch if i is property of item in list
-            try {
-                var index = document.getElementById("editItem").name;
-                var item = JSON.parse(document.getElementById("editItem").value.toLowerCase());
-                var m = item.meaning.length;
-                while(m--){
-                    if (item.meaning[m] === ""){
-                        delete item.meaning[m];
-                    }
-                }
-                var fullList = getFullList().reverse();
-
-
-                if (isItemValid(item) &&//item is valid
-                    !(checkForDuplicates(fullList,item) && //kanji (if changed) is not already in the list
-                      fullList[index].kanji !== item.kanji)) {//unless it is the item being edited
-
-
-                    var srslist = getSrsList().reverse();
-                    //get srs components of item(list)
-
-                    fullList[index] = item;//does not have srs stuff, re-add it now
-
-                    debugging&&console.log(fullList[index]);
-                    debugging&&console.log(srslist[index]);
-                    fullList[index].date = srslist[index].date;
-                    fullList[index].level = srslist[index].level;
-                    fullList[index].locked = srslist[index].locked;
-                    fullList[index].manualLock = srslist[index].manualLock;
-
-                    fullList = fullList.reverse(); //reset order of array
-
-                    localSet('User-Vocab', fullList);
-
-                    generateEditOptions();
-                    $("#editStatus").html('Saved changes!');
-                    document.getElementById("editItem").value = "";
-                    document.getElementById("editItem").name = "";
-
-                }else{
-                    $("#editStatus").text('Invalid item or duplicate!');
-                    alert(isItemValid(item).toString() +" && ！("+ checkForDuplicates(fullList,item).toString()+" && !("+fullList[index].kanji+" !== "+item.kanji+")");
-
-                }
-            }
-            catch (e) {
-                $("#editStatus").text(e);
-            }
-        }
-    });
-
-    $("#EditDeleteBtn").click(function () {
-        //select options element window
-        var select = document.getElementById("editWindow");
-
-        //index of selected item
-        var item = select.options[select.selectedIndex].value;
-
-        //fetch JSON strings from storage and convert them into Javascript literals
-        var vocabList = getFullList();
-
-        //starting at selected index, remove 1 entry (the selected index).
-        if (item > -1) {
-            if (vocabList !== null){
-                vocabList.splice(item, 1);
-            }
+            item.manualLock = item.locked;
+        }else{
+            item.manualLock = false;
         }
 
-        //yuck
-        if (vocabList.length !== 0) {
-            localSet('User-Vocab', vocabList);
-        }
-        else {
-            localStorage.removeItem('User-Vocab');
-        }
+        debugging&&console.log("setting locks for "+ item.kanji +": locked: "+item.locked+", manualLock: "+ item.manualLock);
 
-        updateEditGUI();
-
-        $("#editStatus").text('Item deleted!');
-    });
-
-    function updateEditGUI(){
-
-        generateEditOptions();
-        document.getElementById("editItem").value = "";
-        document.getElementById("editItem").name = "";
-
-    }
-
-    $("#EditDeleteAllBtn").click(function () {
-        var deleteAll = confirm("Are you sure you want to delete all entries?");
-        if (deleteAll) {
-
-            //drop local storage
-            localStorage.removeItem('User-Vocab');
-
-
-            updateEditGUI();
-
-            $("#editStatus").text('All items deleted!');
-        }
-    });
-
-
-    $("#EditCloseBtn").click(function () {
-        $("#edit").hide();
-        $("#editForm")[0].reset();
-        $("#editStatus").text('Ready to edit..');
-    });
-
-    //retrieve values from storage to populate 'editItems' menu
-    function generateEditOptions() {
-        var select = document.getElementById('editWindow');
-
-        //clear the menu (blank slate)
-        while (select.firstChild) {
-            select.removeChild(select.firstChild);
-        }
-
-        //check for items to add
-        if (localStorage.getItem('User-Vocab')) {
-
-            //retrieve from local storage
-            var vocabList = getVocList();
-            var srslist =  getSrsList();
-            var options = [];
-            //build option string
-            var i = vocabList.length;
-            while (i--){
-                //form element to save string
-                var opt = document.createElement('option');
-
-                //dynamic components of string
-
-                //when is this item up for review
-                var due = srslist[i].due||srslist[i].date + srsintervals[srslist[i].level];
-                var review = "";
-
-                //no future reviews if burned
-                if(srslist[i].level >= 9) {
-                    review = "Never";
-                }
-
-                //calculate next relative review time
-                //current timestamp is past due date.
-                else if(Date.now() >= due) {
-                    review = "Now" ;
-                }
-
-                else {//turn number (milliseconds) into relatable string (hours, days, etc)
-                    review = ms2str(due - Date.now());
-                }//end if review is not 'never' or 'now'
-
-                var text = vocabList[i].kanji + " & " +
-                    vocabList[i].reading + " & " +
-                    vocabList[i].meaning + " (" +
-                    srslevels[srslist[i].level] + " - Review: " +
-                    review + ") Locked: " +
-                    srslist[i].manualLock;
-
-                opt.value = i;
-                opt.innerHTML = text;
-                options.push(opt);//for future use (sorting data etc)
-                select.appendChild(opt);//export item to option menu
-            }
-        }
-    }
-
-    function ms2str(milliseconds){
+        return item;
+    };
+    /** Converts number of milliseconds into a readable string
+	* @param {number} milliseconds - The number of milliseconds to approximate
+	* @returns {string} Readable time frame ('2 months', '3 hours', '1 week' etc).
+	*/
+	var ms2str = function(milliseconds){
         var num; //number of months weeks hours etc
         //more time has elapsed than required for the level
         if(milliseconds <= 0) {
@@ -907,11 +592,256 @@ var hijackRequests = require('./hijackRequests.js');
                 return num;
             }
         }
-    }
+    };
+    /** Retrieves values from storage to populate 'editItems' menu
+	*/
+    var generateEditOptions = function() {
+        var select = document.getElementById('editWindow');
+        //clear the editWindow
+        while (select.firstChild) {
+            select.removeChild(select.firstChild);
+        }
+        //check for items to add
+        if (localStorage.getItem('User-Vocab')) {
 
-    /*
- *  Export
- */
+            //retrieve from local storage
+            var vocabList = getVocList();
+            var srslist =  getVocList();
+            var options = [];
+            //build option string
+            //var i = vocabList.length;
+            //while (i--){
+			vocabList.forEach(function(task){
+                //form element to save string
+                var opt = document.createElement('option');
+
+                //dynamic components of string
+
+                //when is this item up for review
+                var due = task.due||task.date + srsObject[task.level].duration;
+                var review = "";
+
+                //no future reviews if burned
+                if(task.level >= 9) {
+                    review = "Never";
+                }
+
+                //calculate next relative review time
+                //current timestamp is past due date.
+                else if(Date.now() >= due) {
+                    review = "Now" ;
+                }
+                else {
+                    review = ms2str(due - Date.now());
+                }//end if review is not 'never' or 'now'
+
+                var text = task.kanji + " & " +
+                    task.reading + " & " +
+                    task.meaning + " (" +
+					srsObject[task.level].rank +
+					" - Review: " +
+                    review + ") Locked: " +
+                    task.manualLock;
+
+                opt.value = i;
+                opt.innerHTML = text;
+                options.push(opt);//for future use (sorting data etc)
+                select.appendChild(opt);//export item to option menu
+            }, this);
+        }
+    };
+    /** Edit Items
+	*/
+    window.WKSS_edit = function () {
+        generateEditOptions();
+        $("#edit").show();
+        //hide other windows
+        $("#export").hide();
+        $("#import").hide();
+        $("#add").hide();
+        $("#selfstudy").hide();
+    };
+	var buildNode = require('./buildnode.js');
+
+	var addEditWindow = function() {
+		var editWindow = buildNode('div', {id: "WKSS-edit", className: "WKSS"});
+		var editForm = buildNode('form', {id: "WKSS-editForm"});
+		editWindow.appendChild(editForm);
+		var editCloseButton = buildNode('button', {id: "WKSS-editCloseBtn", className: "WKSS-close"});
+		editForm.appendChild(editCloseButton);
+		
+		editCloseButton.appendChild(buildNode('i', {className: "icon-remove"}));
+		var h1Element = buildNode('h1');
+		editForm.appendChild(h1Element);
+		h1Element.appendChild(document.createTextNode("Edit your Vocab"));
+		var selectElement = buildNode('select', {id: "editWindow", size: "8"});
+		editForm.appendChild(selectElement);
+		var editItemText = buildNode('input', {type: "text" id: "editItem" name: "" size: "40" placeholder: "Select vocab, click edit, change and save!"});
+		editForm.appendChild(editItemText);
+		var editStatus = buildNode('p', {id: "editStatus"});
+		editForm.appendChild(editStatus);
+		editStatus.appendChild(document.createTextNode("Ready to edit.."));
+		
+		var editButton = buildNode('button', {id: "EditEditBtn", type: "button"});
+		editForm.appendChild(editButton);
+		editButton.appendChild(document.createTextNode("Edit"));
+		var editSave = buildNode('button', {id: "EditSaveBtn", type: "button"});
+		editForm.appendChild(editSave);
+		editSave.appendChild(document.createTextNode("Save"));
+		var editDelete = buildNode('button', {id: "EditDeleteBtn", type: "button", title: "Delete selected item"});
+		editForm.appendChild(editDelete);
+		editDelete.appendChild(document.createTextNode("Delete"));
+		var editDeleteAll = buildNode('button', {id: "EditDeleteAllBtn", type: "button", title: "本当にやるの？"});
+		editForm.appendChild(editDeleteAll);
+		editDeleteAll.appendChild(document.createTextNode("Delete All"));
+		var editResetLevels = buildNode('button', {id: "ResetLevelsBtn", type: "button"});
+		editForm.appendChild(editResetLevels);
+		editResetLevels.appendChild(document.createTextNode("Reset levels"));
+		
+		return editWindow;
+	};
+    $("body").append(addEditWindow);
+    $("#WKSS-edit").hide();
+
+    $("#ResetLevelsBtn").click(function () {
+		var vocList = getVocList();
+
+        if (vocList) {
+            var i = vocList.length;
+            while(i--){
+                vocList[i].level = 0;
+                debugging&&console.log("vocList[i].i before: "+vocList[i].i);
+                vocList[i].i=i;
+                debugging&&console.log("vocList[i].i after: "+vocList[i].i);
+                var srsList2 = localGet('User-Vocab')||[];
+
+                srsList2 = updateSrsInList(vocList[i],srsList2);
+                localSet('User-Vocab', srsList2);
+
+            }
+        }
+    });
+
+    $("#EditEditBtn").click(function () {
+        //get handle for 'select' area
+        var select = document.getElementById("editWindow");
+
+        //get the index for the currently selected item
+        var index = select.selectedIndex; //select.options[select.selectedIndex].value is not required, option values are set to index
+        var vocabList = getVocList();
+        vocabList = vocabList.reverse();
+        document.getElementById("editItem").value = JSON.stringify(vocabList[index]);
+        document.getElementById("editItem").name = index; //using name to save the index
+        $("#editStatus").text('Loaded item to edit');
+    });
+
+    $("#EditSaveBtn").click(function () {
+		//-- be aware
+		//deleting one item may cause mismatch if i is property of item in list
+		try {
+			if ($("#editItem").val().length !== 0) {
+				var editItem = document.getElementById("editItem");
+                var index = editItem.name;
+				var item = JSON.parse(editItem.value.toLowerCase());
+                // Make sure that the word 'meaning' is immutable, so it exists to trim
+				
+				if (item.meaning){
+					item.meaning.forEach(function(meaning, m, meanings){
+						if (meaning === ""){
+							delete meanings[m];
+						}
+					}, this);
+				}
+                var fullList = getVocList().reverse();
+
+                if (isItemValid(item) &&//item is valid
+                    !(checkForDuplicates(fullList,item) && //kanji (if changed) is not already in the list
+                      fullList[index].kanji !== item.kanji)) {//unless it is the item being edited
+
+                    var srslist = getVocList().reverse();
+                    //get srs components of item(list)
+                    fullList[index] = item;//does not have srs stuff, re-add it now
+
+                    fullList[index].date = srslist[index].date;
+                    fullList[index].level = srslist[index].level;
+                    fullList[index].locked = srslist[index].locked;
+                    fullList[index].manualLock = srslist[index].manualLock;
+
+                    fullList = fullList.reverse(); //reset order of array
+
+                    localSet('User-Vocab', fullList);
+
+                    generateEditOptions();
+                    $("#editStatus").html('Saved changes!');
+                    document.getElementById("editItem").value = "";
+                    document.getElementById("editItem").name = "";
+				}
+				else{
+                    $("#editStatus").text('Invalid item or duplicate!');
+                    alert(isItemValid(item).toString() +" && ！("+ checkForDuplicates(fullList,item).toString()+" && !("+fullList[index].kanji+" !== "+item.kanji+")");
+                }
+			}
+		}
+		catch (e) {
+			$("#editStatus").text(e);
+		}
+    });
+
+    var updateEditGUI = function(){
+        generateEditOptions();
+        document.getElementById("editItem").value = "";
+        document.getElementById("editItem").name = "";
+    };
+	var editDelete = function () {
+        //select options element window
+        var select = document.getElementById("editWindow");
+
+        //index of selected item
+        var item = select.options[select.selectedIndex].value;
+
+        //fetch JSON strings from storage and convert them into Javascript literals
+        var vocabList = getVocList();
+
+        //starting at selected index, remove 1 entry (the selected index).
+        if (item > -1) {
+            if (vocabList !== null){
+                vocabList.splice(item, 1);
+            }
+        }
+
+        //yuck
+        if (vocabList.length !== 0) {
+            localSet('User-Vocab', vocabList);
+        }
+        else {
+            localStorage.removeItem('User-Vocab');
+        }
+
+        updateEditGUI();
+
+        $("#editStatus").text('Item deleted!');
+    };
+    $("#EditDeleteBtn").click(editDelete);
+
+	var editDeleteAll = function () {
+        var deleteAll = confirm("Are you sure you want to delete all entries?");
+        if (deleteAll) {
+            //drop local storage
+            localStorage.removeItem('User-Vocab');
+            updateEditGUI();
+            $("#editStatus").text('All items deleted!');
+        }
+    };
+    $("#EditDeleteAllBtn").click(editDeleteAll);
+
+    $("#EditCloseBtn").click(function () {
+        $("#edit").hide();
+        $("#editForm")[0].reset();
+        $("#editStatus").text('Ready to edit..');
+    });
+
+    /** Export
+	*/
     window.WKSS_export = function () {
         $("#export").show();
         //hide other windows
@@ -958,23 +888,20 @@ var hijackRequests = require('./hijackRequests.js');
     });
 
     $("#ExportCsvBtn").click(function () {
-        var vocabList = getFullList();
+        var vocabList = getVocList();
         var CsvFile = createCSV(vocabList);
         window.open(CsvFile);
     });
 
-    $("#ExportCloseBtn").click(
-        function () {
-            $("#export").hide();
-            $("#exportForm")[0].reset();
-            $("#exportArea").text("");
-            $("#exportStatus").text('Ready to export..');
-        }
-    );
+    $("#ExportCloseBtn").click(function () {
+		$("#export").hide();
+		$("#exportForm")[0].reset();
+		$("#exportArea").text("");
+		$("#exportStatus").text('Ready to export..');
+	});
 
-    /*
- *  Import
- */
+    /** Import
+	*/
     window.WKSS_import = function () {
         $("#import").show();
         //hide other windows
@@ -1005,7 +932,7 @@ var hijackRequests = require('./hijackRequests.js');
 </div>');
     $("#import").hide();
 
-    function fileUpload (ev){
+    var fileUpload = function(ev){
         var csvHeader = true;        //first row contains stuff like "Kanji/Vocab, Reading, Meaning" etc
         var tsvfile;          //tabs separate fields, commas seperate values? or false for vice versa
         var CSVs = ev.target.files;
@@ -1131,7 +1058,6 @@ var hijackRequests = require('./hijackRequests.js');
 
     document.getElementById("upload") && document.getElementById("upload").addEventListener('change', fileUpload, false);
 
-
     $("#ImportCsvBtn").click(function () {
     });
 
@@ -1141,7 +1067,6 @@ var hijackRequests = require('./hijackRequests.js');
     });
 
     $("#ImportItemsBtn").click(function () {
-
         if ($("#importArea").val().length !== 0) {
             try {
                 var add = JSON.parse($("#importArea").val().toLowerCase());
@@ -1155,7 +1080,7 @@ var hijackRequests = require('./hijackRequests.js');
                 var srslist = [];
                 if (localStorage.getItem('User-Vocab')) {
                     var vocabList = getVocList();
-                    srslist = getSrsList();
+                    srslist = getVocList();
                     newlist = vocabList.concat(add);
                 }
                 else {
@@ -1192,132 +1117,7 @@ var hijackRequests = require('./hijackRequests.js');
         $("#importStatus").text('Ready to import..');
     });
 
-    /*
- *  Review Items
- */
-    window.WKSS_review = function () {
-
-        //is there a session waiting in storage?
-        if(sessionStorage.getItem('User-Review')) {
-
-            //show the selfstudy window
-            $("#selfstudy").show();
-
-            //hide other windows
-            $("#add").hide();
-            $("#export").hide();
-            $("#edit").hide();
-            $("#import").hide();
-
-            startReview();
-        }
-    };
-
-    $("body").append('                                                          \
-<div id="selfstudy" class="WKSS">\
-<button id="SelfstudyCloseBtn" class="wkss-close" type="button"><i class="icon-remove"></i></button>\
-<h1>Review<span id="RevNum"></span></h1>\
-<div id="wkss-kanji">\
-<span id="rev-kanji"></span>\
-</div><div id="wkss-type">\
-<span id="rev-type"></span><br />\
-</div><div id="wkss-solution">\
-<span id="rev-solution"></span>\
-</div><div id="wkss-input">\
-<input type="text" id="rev-input" size="40" placeholder="">\
-</div><span id="rev-index" style="display: block;"></span>\
-\
-<form id="audio-form">\
-<label id="AudioButton" class="button">Play audio</label>\
-<label id="WrapUpBtn"   class="button">Wrap Up</label>\
-</form>\
-<div id="rev-audio" style="display:none;"></div>\
-</div>');
-    $("#selfstudy").hide();
-
-    $("#SelfstudyCloseBtn").click(function () {
-        $("#selfstudy").hide();
-        $("#rev-input").val("");
-        reviewActive = false;
-    });
-
-    $("#WrapUpBtn").click(function() {
-        var sessionList = sessionGet('User-Review')||[];
-        var statsList = sessionGet('User-Stats')||[];
-        //if an index in sessionList matches one in statsList, don't delete
-        var sessionI = sessionList.length;
-        var item = sessionGet('WKSS-item')||[];
-        var arr2 = [];
-        //for every item in sessionList, look for index in statsList,
-        //if not there (-1) delete item from sessionList
-        while (sessionI--){
-            var index = findIndex(statsList,sessionList[sessionI]);
-            if ((Math.sign(1/index) !== -1)||(sessionList[sessionI].index == item.index)){
-
-                arr2.push(sessionList[sessionI]);
-            }
-        }
-
-
-        debugging&&console.log(arr2);
-        sessionSet('User-Review', JSON.stringify(arr2));
-    });
-
-    //---------
-    // save to list based on .index property
-    function saveToSortedList(eList,eItem){
-        var get = findIndex(eList,eItem);
-        if (Math.sign(1/get) === -1){
-            eList.splice(-get,0,eItem);
-            return eList;
-        }
-    }
-
-    function findIndex(values, target) {
-        return binarySearch(values, target, 0, values.length - 1);
-    }
-
-    function binarySearch(values, target, start, end) {
-        //debugging&&console.log("binarySearch(values: ,target: , start: "+start+", end: "+end+")");
-
-        if (start > end) {
-            //start has higher value than target, end has lower value
-            //item belongs between
-            // need to return 'start' with a flag that it hasn't been found
-            //invert sign :)
-            return -(start);
-
-
-            //for testing truths
-            //    return String(end)+" < "+item.index+" < "+String(start);
-
-        } //does not exist
-
-
-        var middle = Math.floor((start + end) / 2);
-        var value = values[middle];
-        /*debugging&&console.log("start.index: "+values[start].index);
-     debugging&&console.log("middle.index: "+values[middle].index);
-     debugging&&console.log("end.index: "+values[end].index);
-     */
-        if (Number(value.index) > Number(target.index)) { return binarySearch(values, target, start, middle-1); }
-        if (Number(value.index) < Number(target.index)) { return binarySearch(values, target, middle+1, end); }
-        return middle; //found!
-    }
-    //-------
-
-    $("#AudioButton").click(function () {
-        openInNewTab(document.getElementById('rev-audio').innerHTML);
-    });
-
-    function openInNewTab(url)
-    {
-        var win=window.open(url, '_blank');
-        win.focus();
-    }
-
-    function playAudio() {
-
+    var playAudio = function() {
         var kanji = document.getElementById('rev-kanji').innerHTML;
         var kana = (document.getElementById('rev-solution').innerHTML.split(/[,、]+\s*/))[0];
 
@@ -1359,133 +1159,9 @@ var hijackRequests = require('./hijackRequests.js');
 
         }
 
-    }
-
-    var Rev_Item = function(prompt, kanji, type, solution, index){
-        this.prompt = prompt;
-        this.kanji = kanji;
-        this.type = type;
-        this.solution = solution;
-        this.index = index;
     };
 
-    function generateReviewList() {
-        //don't interfere with an active session
-        if (reviewActive){
-            document.getElementById('user-review').innerHTML = "Review in Progress";
-            return;
-        }
-
-        debugging&&console.log("generateReviewList()");
-        // function generateReviewList() builds a review session and updates the html menu to show number waiting.
-        var numReviews = 0;
-        var soonest;
-        var next;
-
-        var reviewList = [];
-
-        //check to see if there is vocab already in offline storage
-        if (localStorage.getItem('User-Vocab')) {
-            var vocabList = getFullList();
-            debugging&&console.log(vocabList);
-            var now = Date.now();
-
-            //for each vocab in storage, get the amount of time vocab has lived
-            var i = vocabList.length;
-            while(i--){
-                var due = vocabList[i].date + srsintervals[vocabList[i].level];
-
-
-                // if tem is unlocked and unburned
-                if (vocabList[i].level < 9 &&
-                    (vocabList[i].manualLock === "no" || vocabList[i].manualLock === "n" ||
-                     vocabList[i].manualLock ==="DB" && !lockDB )){
-                    // if it is past review time
-                    if(now >= due) {
-                        // count vocab up for review
-                        numReviews++;
-
-                        // add item-meaning object to reviewList
-                        // have made this optional for surname lists etc.
-                        if (vocabList[i].meaning[0] !== "") {
-                            //Rev_Item object args: prompt, kanji, type, solution, index
-                            var revItem = new Rev_Item(vocabList[i].kanji, vocabList[i].kanji, "Meaning", vocabList[i].meaning, i);
-                            reviewList.push(revItem);
-                        }
-
-                        // reading is optional, if there is a reading for the vocab, add its object.
-                        if (vocabList[i].reading[0] !== "") {
-                            //Rev_Item object args: prompt, kanji, type, solution, index
-                            var revItem2 = new Rev_Item(vocabList[i].kanji, vocabList[i].kanji, "Reading", vocabList[i].reading, i);
-                            reviewList.push(revItem2);
-                        }
-
-                        //if there is a meaning and reading, and reverse flag is true, test reading from english
-                        if (vocabList[i].reading[0] !== "" && vocabList[i].meaning[0] !== "" && reverse){
-                            //Rev_Item object args: prompt, kanji, type, solution, index
-                            var revItem3 = new Rev_Item(vocabList[i].meaning.join(", "), vocabList[i].kanji, "Reverse", vocabList[i].reading, i);
-                            reviewList.push(revItem3);
-                        }
-
-                    }else{//unlocked/unburned but not time to review yet
-                        debugging&&console.log("setting soonest");
-                        next = due - now;
-                        if(soonest){
-                            soonest = Math.min(soonest, next);
-                        }else{
-                            soonest = next;
-                        }
-
-                    }
-                }//end if item is up for review
-            }// end iterate through vocablist
-        }// end if localStorage
-
-        if (reviewList.length !== 0){
-
-            //store reviewList in current session
-            sessionSet('User-Review', JSON.stringify(reviewList));
-            debugging&&console.log(reviewList);
-
-        }else{
-            debugging&&console.log("reviewList is empty: "+JSON.stringify(reviewList));
-            if (typeof soonest !== "undefined"){
-                document.getElementById('user-review').innerHTML = "Next Review in "+ms2str(soonest);
-            }else{
-                document.getElementById('user-review').innerHTML = "No Reviews Available";
-            }
-        }
-
-        var strReviews = numReviews.toString();
-
-        /* If you want to do the 42+ thing.
-     if (numReviews > 42) {
-     strReviews = "42+"; //hail the crabigator!
-     }
-     //*/
-
-        // return the number of reviews
-        debugging&&console.log(numReviews.toString() +" reviews created");
-        if (numReviews > 0){
-            var reviewString = (soonest !== undefined)? "<br/>\
-More to come in "+ms2str(soonest):"";
-            document.getElementById('user-review').innerHTML = "Review (" + strReviews + ")" + reviewString;
-        }
-    }
-
-    //global to keep track of when a review is in session.
-    var reviewActive = false;
-
-    function startReview() {
-        debugging&&console.log("startReview()");
-        submit = true;
-        reviewActive = true;
-        //get the review 'list' from session storage, line up the first item in queue
-        var reviewList = sessionGet('User-Review')||[];
-        nextReview(reviewList);
-    }
-
-    function nextReview(reviewList) {
+    var nextReview = function(reviewList) {
         //sets up the next item for review
         //uses functions:
         //    wanakana.bind/unbind
@@ -1534,9 +1210,245 @@ More to come in "+ms2str(soonest):"";
         }
 
         playAudio();
-    }
+    };
 
-    function markAnswer(item) {
+	//global to keep track of when a review is in session.
+    var reviewActive = false;
+
+    var startReview = function() {
+        debugging&&console.log("startReview()");
+        submit = true;
+        reviewActive = true;
+        //get the review 'list' from session storage, line up the first item in queue
+        var reviewList = sessionGet('User-Review')||[];
+        nextReview(reviewList);
+    };
+
+
+    /** Review Items
+	*/
+    window.WKSS_review = function () {
+
+        //is there a session waiting in storage?
+        if(sessionStorage.getItem('User-Review')) {
+
+            //show the selfstudy window
+            $("#selfstudy").show();
+
+            //hide other windows
+            $("#add").hide();
+            $("#export").hide();
+            $("#edit").hide();
+            $("#import").hide();
+
+            startReview();
+        }
+    };
+
+    $("body").append('                                                          \
+<div id="selfstudy" class="WKSS">\
+<button id="SelfstudyCloseBtn" class="wkss-close" type="button"><i class="icon-remove"></i></button>\
+<h1>Review<span id="RevNum"></span></h1>\
+<div id="wkss-kanji">\
+<span id="rev-kanji"></span>\
+</div><div id="wkss-type">\
+<span id="rev-type"></span><br />\
+</div><div id="wkss-solution">\
+<span id="rev-solution"></span>\
+</div><div id="wkss-input">\
+<input type="text" id="rev-input" size="40" placeholder="">\
+</div><span id="rev-index" style="display: block;"></span>\
+\
+<form id="audio-form">\
+<label id="AudioButton" class="button">Play audio</label>\
+<label id="WrapUpBtn"   class="button">Wrap Up</label>\
+</form>\
+<div id="rev-audio" style="display:none;"></div>\
+</div>');
+    $("#selfstudy").hide();
+
+    $("#SelfstudyCloseBtn").click(function () {
+        $("#selfstudy").hide();
+        $("#rev-input").val("");
+        reviewActive = false;
+    });
+
+    var binarySearch = function(values, target, start, end) {
+        //debugging&&console.log("binarySearch(values: ,target: , start: "+start+", end: "+end+")");
+
+        if (start > end) {
+            //start has higher value than target, end has lower value
+            //item belongs between
+            // need to return 'start' with a flag that it hasn't been found
+            //invert sign :)
+            return -(start);
+
+
+            //for testing truths
+            //    return String(end)+" < "+item.index+" < "+String(start);
+
+        } //does not exist
+
+
+        var middle = Math.floor((start + end) / 2);
+        var value = values[middle];
+        /*debugging&&console.log("start.index: "+values[start].index);
+     debugging&&console.log("middle.index: "+values[middle].index);
+     debugging&&console.log("end.index: "+values[end].index);
+     */
+        if (Number(value.index) > Number(target.index)) {
+			return binarySearch(values, target, start, middle-1);
+		}
+        if (Number(value.index) < Number(target.index)) {
+			return binarySearch(values, target, middle+1, end);
+		}
+        return middle; //found!
+    };
+
+	var findIndex = function(values, target) {
+        return binarySearch(values, target, 0, values.length - 1);
+	};
+
+    $("#WrapUpBtn").click(function() {
+        var sessionList = sessionGet('User-Review')||[];
+        var statsList = sessionGet('User-Stats')||[];
+        //if an index in sessionList matches one in statsList, don't delete
+        var sessionI = sessionList.length;
+        var item = sessionGet('WKSS-item')||[];
+        var arr2 = [];
+        //for every item in sessionList, look for index in statsList,
+        //if not there (-1) delete item from sessionList
+        while (sessionI--){
+            var index = findIndex(statsList,sessionList[sessionI]);
+            if ((Math.sign(1/index) !== -1)||(sessionList[sessionI].index == item.index)){
+
+                arr2.push(sessionList[sessionI]);
+            }
+        }
+        debugging&&console.log(arr2);
+        sessionSet('User-Review', JSON.stringify(arr2));
+    });
+
+    /** Save to list based on .index property
+	* @param {Array.<task>} eList
+	* @param {task} eItem
+	*/
+    var saveToSortedList = function(eList,eItem){
+        var get = findIndex(eList,eItem);
+        if (Math.sign(1/get) === -1){
+            eList.splice(-get,0,eItem);
+        }
+		return eList;
+    };
+
+    //-------
+    var openInNewTab = function(url) {
+        var win=window.open(url, '_blank');
+        win.focus();
+    };
+
+    $("#AudioButton").click(function () {
+        openInNewTab(document.getElementById('rev-audio').innerHTML);
+    });
+
+    var Rev_Item = function(prompt, kanji, type, solution, index){
+        this.prompt = prompt;
+        this.kanji = kanji;
+        this.type = type;
+        this.solution = solution;
+        this.index = index;
+    };
+
+    var updateSRS = function(stats, voclist) {
+        var now = Date.now();
+        if (voclist[stats.index].due < now){ //double check that the item was really up for review.
+            if(!stats.numWrong && voclist[stats.index].level < 9) {//all correct (none wrong)
+                voclist[stats.index].level++;
+            }
+            else {
+                stats.numWrong = {};
+                //Adapted from WaniKani's srs to authentically mimic level downs
+                var o = (stats.numWrong.Meaning||0)+(stats.numWrong.Reading||0)+(stats.numWrong.Reverse||0);
+                var t = voclist[stats.index].level;
+                var r=t>=5?2*Math.round(o/2):1*Math.round(o/2);
+                var n=t-r<1?1:t-r;
+
+                voclist[stats.index].level = n;//don't stay on 'started'
+
+            }
+            voclist[stats.index].date = now;
+            voclist[stats.index].due = now + srsObject[voclist[stats.index].level].duration;
+            console.log("Next review in "+ms2str(srsObject[voclist[stats.index].level].duration));
+
+            return voclist;
+        }
+    };
+
+    var showResults = function() {
+
+        var statsList = sessionGet('User-Stats')||[];
+        sessionStorage.clear();
+
+        console.log("statslist", statsList);
+        var voclist = getVocList();
+        
+		statsList.forEach(function(stats, i, statsList){
+            debugging&&console.log("stats",stats);
+            var altText = voclist[stats.index].level;//+stats.type;
+
+            if (stats.numWrong) {
+                if (stats.numWrong.Meaning)
+                    altText = altText + " Meaning Wrong x"+stats.numWrong.Meaning +"\n";
+                if (stats.numWrong.Reading)
+                    altText = altText + " Reading Wrong x"+stats.numWrong.Reading +"\n";
+                if (stats.numWrong.Reverse)
+                    altText = altText + " Reverse Wrong x"+stats.numWrong.Reverse +"\n";
+			}
+			if (stats.numCorrect){
+				if (stats.numCorrect.Meaning)
+					altText = altText + " Meaning Correct x"+stats.numCorrect.Meaning +"\n";
+				if (stats.numCorrect.Reading)
+					altText = altText + " Reading Correct x"+stats.numCorrect.Reading +"\n";
+				if (stats.numCorrect.Reverse)
+					altText = altText + " Reverse Correct x"+stats.numCorrect.Reverse +"\n";
+			}
+            console.log(stats);
+
+			//TODO sort into apprentice, guru, etc
+			document.getElementById("stats-a").innerHTML +=
+				"<span class=" +
+				(stats.numWrong? "\"rev-error\"":"\"rev-correct\"") +
+				" title='"+altText+"'>" + stats.kanji + "</span>";
+			
+			//map with side effects?
+            statsList[i] = updateSRS(stats, voclist);
+
+        }, this);
+        sessionSet("User-Stats",statsList);
+        localSet("User-Vocab", voclist);
+    };
+
+    $("body").append('                                                          \
+<div id="resultwindow" class="WKSS">                                    \
+<button id="ReviewresultsCloseBtn" class="wkss-close" type="button"><i class="icon-remove"></i></button>\
+<h1>Review Results</h1>\
+<h2>All</h2>\
+<div id="stats-a"></div>\
+</div>');
+
+    $("#resultwindow").hide();
+
+    $("#ReviewresultsCloseBtn").click(function () {
+        $("#resultwindow").hide();
+        document.getElementById("stats-a").innerHTML = "";
+    });
+
+
+    //declare global values for keyup event
+    //is an answer being submitted?
+    var submit = true;
+
+	var markAnswer = function(item) {
         //evaluate 'item' against the question.
         // match by index
         // get type of question
@@ -1627,85 +1539,8 @@ More to come in "+ms2str(soonest):"";
 
         return item;
 
-    }
+    };
 
-    function showResults() {
-
-        var statsList = sessionGet('User-Stats')||[];
-        sessionStorage.clear();
-
-        console.log("statslist", statsList);
-        var i =  statsList.length;
-        var voclist = getVocList();
-        while(i--){
-
-            //slist[statsList[i].index].level;
-            debugging&&console.log("b");
-            debugging&&console.log("statslist[i]",statsList[i]);
-            var altText = voclist[statsList[i].index].level;//+statsList[i].type;
-            debugging&&console.log("a");
-
-            if (!statsList[i].numWrong) {
-                if (statsList[i].numCorrect){
-                    if (statsList[i].numCorrect.Meaning)
-                        altText = altText + " Meaning Correct x"+statsList[i].numCorrect.Meaning +"\n";
-                    if (statsList[i].numCorrect.Reading)
-                        altText = altText + " Reading Correct x"+statsList[i].numCorrect.Reading +"\n";
-                    if (statsList[i].numCorrect.Reverse)
-                        altText = altText + " Reverse Correct x"+statsList[i].numCorrect.Reverse +"\n";
-                }
-
-                document.getElementById("stats-a").innerHTML +=
-                    "<span class=\"rev-correct\"  title='"+altText+" +'>" + statsList[i].kanji + "</span>";
-            } else {
-                if (statsList[i].numWrong.Meaning)
-                    altText = altText + " Meaning Wrong x"+statsList[i].numWrong.Meaning +"\n";
-                if (statsList[i].numWrong.Reading)
-                    altText = altText + " Reading Wrong x"+statsList[i].numWrong.Reading +"\n";
-                if (statsList[i].numWrong.Reverse)
-                    altText = altText + " Reverse Wrong x"+statsList[i].numWrong.Reverse +"\n";
-                if (statsList[i].numCorrect){
-                    if (statsList[i].numCorrect.Meaning)
-                        altText = altText + " Meaning Correct x"+statsList[i].numCorrect.Meaning +"\n";
-                    if (statsList[i].numCorrect.Reading)
-                        altText = altText + " Reading Correct x"+statsList[i].numCorrect.Reading +"\n";
-                    if (statsList[i].numCorrect.Reverse)
-                        altText = altText + " Reverse Correct x"+statsList[i].numCorrect.Reverse +"\n";
-                }
-
-
-                //TODO sort into apprentice, guru, etc
-                document.getElementById("stats-a").innerHTML +=
-                    "<span class=\"rev-error\"  title='"+altText+"'>" + statsList[i].kanji + "</span>";
-            }
-            console.log(statsList[i]);
-            statsList[i] = updateSRS(statsList[i], voclist);
-
-        }
-        sessionSet("User-Stats",statsList);
-        localSet("User-Vocab", voclist);
-
-    }
-
-    $("body").append('                                                          \
-<div id="resultwindow" class="WKSS">                                    \
-<button id="ReviewresultsCloseBtn" class="wkss-close" type="button"><i class="icon-remove"></i></button>\
-<h1>Review Results</h1>\
-<h2>All</h2>\
-<div id="stats-a"></div>\
-</div>');
-
-    $("#resultwindow").hide();
-
-    $("#ReviewresultsCloseBtn").click(function () {
-        $("#resultwindow").hide();
-        document.getElementById("stats-a").innerHTML = "";
-    });
-
-
-    //declare global values for keyup event
-    //is an answer being submitted?
-    var submit = true;
 
     //jquery keyup event
     $("#rev-input").keyup(function (e) {
@@ -1875,45 +1710,6 @@ More to come in "+ms2str(soonest):"";
 		}
 	});
 
-    function updateSRS(stats, voclist) {
-
-
-        var now = Date.now();
-        if (voclist[stats.index].due < now){ //double check that the item was really up for review.
-            if(!stats.numWrong && voclist[stats.index].level < 9) {//all correct (none wrong)
-                voclist[stats.index].level++;
-            }
-            else {
-                stats.numWrong = {};
-                //Adapted from WaniKani's srs to authentically mimic level downs
-                var o = (stats.numWrong.Meaning||0)+(stats.numWrong.Reading||0)+(stats.numWrong.Reverse||0);
-                var t = voclist[stats.index].level;
-                var r=t>=5?2*Math.round(o/2):1*Math.round(o/2);
-                var n=t-r<1?1:t-r;
-
-                voclist[stats.index].level = n;//don't stay on 'started'
-
-            }
-
-
-            voclist[stats.index].date = now;
-            voclist[stats.index].due = now + srsintervals[voclist[stats.index].level];
-            console.log("Next review in "+ms2str(srsintervals[voclist[stats.index].level]));
-
-            return voclist;
-        }
-    }
-
-    function localSet(strName, obj){
-        debugging&&console.log(strName + " is of type " + typeof obj);
-        if (typeof obj === "object")
-            obj=JSON.stringify(obj);
-        localStorage.setItem(strName, obj);
-    }
-    function localGet(strName){
-        var strObj = localStorage.getItem(strName);
-        return parseString(strObj);
-    }
     function sessionSet(strName, obj){
         debugging&&console.log(strName + " is of type " + typeof obj);
         if (typeof obj === "object")
@@ -2191,38 +1987,33 @@ cursor: default\
 .rev-correct {text-shadow:none; border: 1px solid #088A08 !important;border-radius: 10px; background-color: #088A08; padding:4px; margin:4px; color: #FFFFFF; font: normal 18px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif;}");
         gM_addStyle("\
 #add {\
-width:" + addWindowWidth + "px;\
-height:" + addWindowHeight + "px; \
-margin-left:-" + addWindowWidth/2 + "px; \
-}");
-        gM_addStyle("\
+width:" + windowConfig.add.width + ";\
+height:" + windowConfig.add.height + "; \
+margin-left:-" + windowConfig.add.width/2 + "; \
+}\
 #export, #import {\
 background:#fff;\
-width:" + exportImportWindowWidth + "px;\
-height:" + exportImportWindowHeight + "px;\
-margin-left:-" + exportImportWindowWidth/2 + "px; \
-}");
-        gM_addStyle("\
+width:" + windowConfig.exportImport.width + ";\
+height:" + windowConfig.exportImport.height + ";\
+margin-left:-" + windowConfig.exportImport.width/2 + "; \
+}\
 #edit {\
-width:" + editWindowWidth + "px;\
-height:" + editWindowHeight + "px; \
-margin-left:-" + editWindowWidth/2 + "px; \
-}");
-        gM_addStyle("\
+width:" + windowConfig.edit.width + ";\
+height:" + windowConfig.edit.height + "; \
+margin-left:-" + windowConfig.edit.width/2 + "; \
+}\
 #selfstudy {\
 left:50%;\
-width:" + studyWindowWidth + "px;\
-height:auto; \
-margin-left:-" + studyWindowWidth/2 + "px; \
-}");
-        gM_addStyle("\
+width:" + windowConfig.study.width + ";\
+height:" + windowConfig.study.height + "; \
+margin-left:-" + windowConfig.study.width/2 + "; \
+}\
 #resultwindow {\
 left:50%;\
-width:" + resultWindowWidth + "px;\
-height:" + resultWindowHeight + "px; \
-margin-left:-" + resultWindowWidth/2 + "px; \
-}");
-        gM_addStyle("\
+width:" + windowConfig.result.width + "px;\
+height:" + windowConfig.result.height + "px; \
+margin-left:-" + windowConfig.result.width/2 + "px; \
+}\
 #AudioButton {\
 margin-top: 35px;\
 position: relative;\
@@ -2398,7 +2189,6 @@ var i;
         //return kanjiList
         //  debugging&&console.log("Server responded with new kanjiList: \n"+JSON.stringify(kanjiList));
         return localkanjiList;
-
     }
 
 
@@ -2491,23 +2281,19 @@ var i;
     }
 
     function refreshLocks(){
-        //functions:
-        //    setLocks(srsitem)
-
-        //debugging&&console.log("refreshLocks()");
         if (localStorage.getItem('User-Vocab')) {
 
-            var vocList = getSrsList();
+            var vocList = getVocList();
             var i = vocList.length;
             var srsList2 = JSON.parse(localStorage.getItem('User-Vocab'));
             console.groupCollapsed("Setting Locks");
             while(i--){
                 debugging&&console.log("vocList[i] = setLocks(vocList[i]);");
                 vocList[i] = setLocks(vocList[i]);  
-                debugging&&console.log("setSrsItem(srsList[i]);");
+                debugging&&console.log("updateSrsInList(srsList[i]);");
                 //Pull out list (whole thing)
 
-                srsList2 = setSrsItem(vocList[i],srsList2);
+                srsList2 = updateSrsInList(vocList[i],srsList2);
 
             }
             console.groupEnd();
