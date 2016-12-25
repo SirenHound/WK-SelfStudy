@@ -126,3 +126,5 @@ var WanikaniUtil = {
     }
 
 };
+
+module.exports = WanikaniUtil;
