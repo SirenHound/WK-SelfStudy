@@ -3,15 +3,33 @@ var StorageUtil = {
 	/** Initialise User-Vocab
 	*/
 	initStorage: function(){
-		if (!localGet("User-Vocab")){
-			localSet("User-Vocab", []);
+		if (!this.localGet("User-Vocab")){
+			this.localSet("User-Vocab", []);
 		}
 	},
+	parseString: function(strObj){
+        //avoids duplication of code for sesssionGet and localGet
+        var obj;
+        try {
+            obj = JSON.parse(strObj);
+            console.log("Variable is of type " + typeof obj);
+        }
+		catch(e){
+            if (e.name === "SyntaxError"){
+                console.log(strObj + " is an ordinary string that cannot be parsed.");
+                obj = strObj;
+            }
+			else{
+                console.error("Could not parse " + strObj + ". Error: ", e);
+            }
+        }
+        return obj;
+    },
 	/**
 	*/
 	localGet: function(strName){
         var strObj = localStorage.getItem(strName);
-        return parseString(strObj);
+        return this.parseString(strObj);
     },
 	/** Sets strings and objects into browser storage
 	* @requires localStorage
@@ -24,7 +42,7 @@ var StorageUtil = {
 	*/
 	sessionGet: function(strName){
         var strObj = sessionStorage.getItem(strName);
-        return parseString(strObj);
+        return this.parseString(strObj);
     },
 	/** Sets strings and objects into browser session storage
 	* @requires localStorage

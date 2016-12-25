@@ -1,29 +1,6 @@
 /*  This is the original code that I am breaking into bite size bits */
 //NEED TO MAKE SURE BROWSERIFY PUTS THIS ON THE TOP
 
-// ==UserScript==
-// @name        Wanikani Self-Study Plus
-// @namespace   wkselfstudyplus
-// @description Adds an option to add and review your own custom vocabulary
-// @include     *.wanikani.com/*
-// @include     *.wanikani.com/chat/*
-// @exclude	    *.wanikani.com
-// @include     *.wanikani.com/dashboard*
-// @include     *.wanikani.com/community*
-// @version     0.2.0
-// @author      shudouken and Ethan
-// @run-at      document-end
-// @grant       none
-// ==/UserScript==
-
-/*
- *  This script is licensed under the Creative Commons License
- *  "Attribution-NonCommercial 3.0 Unported"
- *
- *  More information at:
- *  http://creativecommons.org/licenses/by-nc/3.0/
- */
-
  
  /** Describes any object that can be reviewed or learned, includes IRadical, IKanji, and IVocabulary
  * @typedef {Object} Task
@@ -34,6 +11,7 @@
 var StorageUtil = require('./storageutil.js');
 var ImportUtil = require('./importutil.js');
 var WanikaniUtil = require('./wanikaniutil.js');
+var ReviewUtil = require('./reviewutil.js');
 
 function main(){
     "use strict";
@@ -106,24 +84,6 @@ function main(){
 		{level: 9, rank: "Burned"}
 	];
 
-	var parseString = function(strObj){
-        //avoids duplication of code for sesssionGet and localGet
-        var obj;
-        try {
-            obj = JSON.parse(strObj);
-            debugging&&console.log("Variable is of type " + typeof obj);
-        }
-		catch(e){
-            if (e.name === "SyntaxError"){
-                debugging&&console.log(strObj + " is an ordinary string that cannot be parsed.");
-                obj = strObj;
-            }
-			else{
-                console.error("Could not parse " + strObj + ". Error: ", e);
-            }
-        }
-        return obj;
-    };
 
 
 	var localGet = function(strName){
@@ -251,7 +211,7 @@ function main(){
         }
     };
 	
-    var userVocabs = localGet("User-Vocab")||[];
+    var userVocabs = StorageUtil.getVocList();
     userVocabs.forEach(loadTasks);//, this);
     console.groupEnd();
 	
@@ -501,29 +461,6 @@ $("body").append("                                                          \
 </form>                                                                   \
 </div>");
 $("#edit").hide();
-
-$("#ResetLevelsBtn").click(function () {
-
-
-	//var srslist = getSrsList();
-	var srsList = JSON.parse(localStorage.getItem('User-Vocab'))||[];
-
-	if (srsList) {
-		var i = srsList.length;
-		while(i--){
-			srsList[i].level = 0;
-			debugging&&console.log("srsList[i].i before: "+srsList[i].i);
-			srsList[i].i=i;
-			debugging&&console.log("srsList[i].i after: "+srsList[i].i);
-			var srsList2 = localGet('User-Vocab')||[];
-
-			srsList2 = setSrsItem(srsList[i],srsList2);
-			localSet('User-Vocab', srsList2);
-
-		}
-	}
-});
-
 
 $("#EditEditBtn").click(function () {
 	//get handle for 'select' area
