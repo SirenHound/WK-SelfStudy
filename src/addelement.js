@@ -3,7 +3,7 @@ var buildNode = require('./buildnode.js');
 // Create DOM for 'add' window
 var addElement = buildNode('div', {id: "add", className: "WKSS"});
 
-var formElement = buildNode('form', {id', "addForm");
+var formElement = buildNode('form', {id: "addForm"});
 addElement.appendChild(formElement);
 
 var buttonElement = buildNode('button', {id: "AddCloseBtn", className: "wkss-close", type: "reset"});

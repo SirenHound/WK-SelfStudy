@@ -26,13 +26,13 @@ module.exports = function(){
 			$("#addMeaning").removeClass("error");
 		}
 	} else {
-		debugging&&console.log("building item: "+kanji);
+		if (debugging) {console.log("building item: "+kanji);}
 		item.kanji = kanji;
 		item.reading = reading; //optional
 		item.meaning = meaning;
 
 		success = true;
-		debugging&&console.log("item is valid");
+		if (debugging) {console.log("item is valid");}
 	}
 
 	//on successful creation of item
@@ -47,7 +47,7 @@ module.exports = function(){
 		// var vocabList = [];
 		var vocabList = getFullList();
 
-		debugging&&console.log("vocabList retrieved, length: "+vocabList.length);
+		if (debugging) {console.log("vocabList retrieved, length: "+vocabList.length);}
 		//check stored user items for duplicates ****************** to do: option for editing duplicate item with new input
 		if(checkForDuplicates(vocabList,item)) {
 			$("#addStatus").text("Duplicate Item detected!");
@@ -57,7 +57,7 @@ module.exports = function(){
 
 		setVocItem(item);
 
-		debugging&&console.log("clear form");
+		if (debugging) {console.log("clear form");}
 		$("#addForm")[0].reset();
 
 		//--------------------------------------------------------------------------------------------------------

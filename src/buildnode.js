@@ -7,7 +7,7 @@
 */
 var buildNode = function(type, options){
 	var node = document.createElement(type);
-	for (option in options) if (options.hasOwnProperty(option)) {
+	for (var option in options) if (options.hasOwnProperty(option)) {
 		if (option === "className" || option === "id"){
 			node[option] = options[option];
 		}
