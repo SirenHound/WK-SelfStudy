@@ -1,0 +1,26 @@
+{
+  "name": "wkselfstudy",
+  "version": "1.0.0",
+  "description": "WaniKani Self Study Plus",
+  "main": "src/trunk.js",
+  "scripts": {
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SirenHound/WK-SelfStudy.git"
+  },
+  "keywords": [
+    "Japanese"
+  ],
+  "author": "Ethan McCoy <ethan@antioch.org.au>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SirenHound/WK-SelfStudy/issues"
+  },
+  "homepage": "https://github.com/SirenHound/WK-SelfStudy#readme",
+  "devDependencies": {
+    "grunt-browserify": "^5.0.0",
+    "grunt-contrib-concat": "^1.0.1",
+    "grunt-contrib-jshint": "^1.1.0"
+  }
+}

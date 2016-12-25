@@ -33,6 +33,7 @@
  
 var StorageUtil = require('./storageutil.js');
 var ImportUtil = require('./importutil.js');
+var WanikaniUtil = require('./wanikaniutil.js');
 
 function main(){
     "use strict";
@@ -104,7 +105,6 @@ function main(){
 		{level: 8, rank: "Enlightened",	duration: 2922*hrs},
 		{level: 9, rank: "Burned"}
 	];
-	var hijackRequests = require('./hijackRequests.js');
 
 	var parseString = function(strObj){
         //avoids duplication of code for sesssionGet and localGet
@@ -580,7 +580,8 @@ $("#EditSaveBtn").click(function () {
 				document.getElementById("editItem").value = "";
 				document.getElementById("editItem").name = "";
 
-			}else{
+			}
+			else{
 				$("#editStatus").text('Invalid item or duplicate!');
 				alert(isItemValid(item).toString() +" && ！("+ checkForDuplicates(fullList,item).toString()+" && !("+fullList[index].kanji+" !== "+item.kanji+")");
 
@@ -746,7 +747,7 @@ $("#ImportCsvBtn").click(function () {
 });
 
 $("#ImportWKBtn").click(function(){
-	getServerResp(APIkey,"vocabulary");
+	WanikaniUtil.getServerResp(APIkey,"vocabulary");
 	debugging&&console.log("maybe?");
 });
 
@@ -1938,154 +1939,19 @@ $("#rev-input").keyup(function (e) {
 
     document.getElementById("upload") && document.getElementById("upload").addEventListener('change', ImportUtil.fileUpload, false);
 
-	var handleReadyStateFour = function(xhrk, requestedItem){
-
-        var localkanjiList = [];
-        debugging&&console.log("readystate: "+ xhrk.readyState);
-        var resp = JSON.parse(xhrk.responseText);
-        debugging&&console.log("about to loop through requested information"); 
-		if (resp.requested_information && resp.requested_information.length){
-			
-			localkanjiList = resp.requested_information.map(function(requestedTask){
-				if (requestedItem === "kanji"){
-					if (requestedTask.user_specific !== null){
-						return {
-							character: requestedTask.character,
-							srs: requestedTask.user_specific.srs,
-							reading: requestedTask[requestedTask.important_reading].split(",")[0],
-							meaning: requestedTask.meaning.split(",")[0]
-						};
-					}
-					else{
-						return {
-							character: requestedTask.character,
-							srs: "unreached"
-						};
-					}
-				}
-				else if(requestedItem === "vocabulary"){
-					if (requestedTask.user_specific !== null||true){ //--
-						//build vocablist
-						return {
-							kanji: requestedTask.character,
-							reading: requestedTask.kana.split(","),
-							meaning: requestedTask.meaning.split(",")
-						};
-					}
-				}
-			}, this);
-		}
-        //return kanjiList
-        //  debugging&&console.log("Server responded with new kanjiList: \n"+JSON.stringify(kanjiList));
-        return localkanjiList;
-    };
-
 	var refreshLocks = function(){
-        if (localStorage.getItem('User-Vocab')) {
-
-            var vocList = StorageUtil.getVocList();
-            var i = vocList.length;
-            var srsList2 = JSON.parse(localStorage.getItem('User-Vocab'));
-            console.groupCollapsed("Setting Locks");
-            while(i--){
-                debugging&&console.log("vocList[i] = setLocks(vocList[i]);");
-                vocList[i] = setLocks(vocList[i]);  
-                debugging&&console.log("updateSrsInList(srsList[i]);");
-                //Pull out list (whole thing)
-
-                srsList2 = updateSrsInList(vocList[i],srsList2);
-
-            }
-            console.groupEnd();
-            localSet('User-Vocab', srsList2);
-            //      debugging&&console.log("Setting new locks: "+JSON.stringify(srsList));
-        }else{
-            debugging&&console.log("no srs storage found");
-        }
+		var vocList = StorageUtil.getVocList().map(function(vocItem){
+			debugging&&console.log("vocList[i] = setLocks(vocList[i]);");
+			vocItem = setLocks(vocItem);  
+			return vocItem;
+		}, this);
+		console.groupEnd();
+		StorageUtil.setVocList(vocList);
     };
 
-	var createCORSRequest = function(method, url){
-        var xhr = new XMLHttpRequest();
-        if ("withCredentials" in xhr){
-            xhr.open(method, url, true);
-        } else if (typeof XDomainRequest !== "undefined"){
-            xhr = new XDomainRequest();
-            xhr.open(method, url);
-        } else {
-            xhr = null;
-        }
-        return xhr;
-    };
-
-    var getServerResp = function(APIkey, requestedItem){
-
-        requestedItem = typeof requestedItem !== 'undefined' ? requestedItem : 'kanji';
-
-        //functions:
-        //    refreshLocks()
-        //    generateReviewList()
-
-        if (APIkey !== "test"){
-            var levels = (requestedItem ==="kanji")? "/1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50":
-            "/1,2,3,4,5,6,7,8,9,10";
-            var xhrk = createCORSRequest("get", "https://www.wanikani.com/api/user/" + APIkey + "/" + requestedItem + levels);
-            if (!isEmpty(xhrk)){
-                xhrk.onreadystatechange = function() {
-                    if (xhrk.readyState == 4){
-                        var kanjiList = handleReadyStateFour(xhrk,requestedItem);
-
-                        if (requestedItem === 'kanji'){
-                            localSet('User-KanjiList', kanjiList);
-                            debugging&&console.log("kanjiList from server", kanjiList);
-                            //update locks in localStorage 
-                            //pass kanjilist into this function
-                            //(don't shift things through storage unecessarily)
-                            refreshLocks();
-                        }
-						else{
-                            var v = kanjiList.length;
-                            debugging&&console.log(v + " items found, attempting to import");
-                            while (v--){
-                                StorageUtil.setVocItem(kanjiList[v]);
-                            }
-                        }
-                    }
-                };
-
-                xhrk.send();
-                debugging&&console.log("below");  
-            }
-        }
-		else {
-            //dummy server response for testing.
-            setTimeout(function () {
-                var kanjiList = [];
-                debugging&&console.log("creating dummy response");
-                kanjiList.push({"character": "猫", "srs": "noServerResp"});
-                var SRS = "apprentice"; //prompt("enter SRS for 子", "guru");
-                kanjiList.push({"character": "子", "srs": SRS});
-                kanjiList.push({"character": "品", "srs": "guru"});
-                kanjiList.push({"character": "供", "srs": "guru"});
-                kanjiList.push({"character": "本", "srs": "guru"});
-                kanjiList.push({"character": "聞", "srs": "apprentice"});
-                kanjiList.push({"character": "人", "srs": "enlightened"});
-                kanjiList.push({"character": "楽", "srs": "burned"});
-                kanjiList.push({"character": "相", "srs": "guru"});
-                kanjiList.push({"character": "卒", "srs": "noMatchWK"});
-                kanjiList.push({"character": "無", "srs": "noMatchGuppy"});
-
-                debugging&&console.log("Server responded with dummy kanjiList: \n"+JSON.stringify(kanjiList));
-
-                localSet('User-KanjiList', kanjiList);
-
-                //update locks in localStorage
-                refreshLocks();
-            }, 10000);
-        }   
-    };
-	
+    
     $("#ImportWKBtn").click(function(){
-        getServerResp(APIkey,"vocabulary");
+        WanikaniUtil.getServerResp(APIkey,"vocabulary");
         debugging&&console.log("maybe?");
     });
 
@@ -2465,63 +2331,6 @@ $("#rev-input").keyup(function (e) {
         document.getElementById("stats-a").innerHTML = "";
     });
 
-	var unbracketSolution = function(solution){
-        //takes an arry of strings and returns the portions before left brackets
-        var unbracketed = solution.filter(function(ans){
-            var openBracket = ans.indexOf("(");
-            if (openBracket !== -1){ //string contains a bracket
-                return ans.toLowerCase().substr(0, openBracket);
-            }
-        }, this);
-        return unbracketed;
-    };
-
-    var inputCorrect = function() {
-
-        var input = $("#rev-input").val().toLowerCase().trim();
-        var solution = document.getElementById('rev-solution').innerHTML.split(/[,、]+\s*/);
-        var correctCharCount = 0;
-        var returnvalue = false;
-
-        debugging&&console.log("Input: " + input);
-
-        var append = unbracketSolution(solution);
-        solution = solution.concat(append);
-        var i = solution.length;
-        while(i--){
-
-            var threshold = 0;//how many characters can be wrong
-            if(document.getElementById('rev-type').innerHTML == "Meaning") {
-                threshold = Math.floor(solution[i].length / errorAllowance);
-            }
-
-            debugging&&console.log("Checking " + solution[i] + " with threshold: " + threshold);
-
-            var j;
-            var lengthDiff = Math.abs(input.length - solution[i].length);
-            if (lengthDiff > threshold){
-                returnvalue = returnvalue || false;
-                debugging&&console.log("false at if branch " + input.length + " < " + JSON.stringify(solution[i]));//.length );//- threshold));
-            } else { //difference in response length is within threshold
-                j = input.length;
-                while (j--) {
-                    if (input[j] == solution[i][j]) {
-                        debugging&&console.log (input[j] +" == "+ solution[i][j]);
-                        correctCharCount++;
-                    }
-                }
-                if (correctCharCount >= solution[i].length - threshold){
-                    returnvalue = true;
-                }
-            }
-
-        }
-
-        debugging&&console.log("Returning " + returnvalue);
-        return returnvalue;
-    };
-
-
 	var markAnswer = function(item) {
         //evaluate 'item' against the question.
         // match by index
@@ -2613,172 +2422,9 @@ $("#rev-input").keyup(function (e) {
         return item;
     };
 
+	
     //jquery keyup event
-    $("#rev-input").keyup(function (e) {
-		//functions:
-		//  inputCorrect()
-
-		//check if key press was 'enter' (keyCode 13) on the way up
-		//and keystate true (answer being submitted)
-		//and cursor is focused in reviewfield
-		if (e.keyCode == 13 && submit === true) {
-			var input = $("#rev-input").val();
-			var reviewList = sessionGet('User-Review')||[];
-			var rnd = sessionStorage.getItem('WKSS-rnd')||0;
-
-			var item = sessionGet('WKSS-item');
-
-			//-- starting implementation of forgiveness protocol
-
-			item.forgive = [];//"ゆるす"]; //placeholder (許す to forgive)
-
-			if (item === null){
-				alert("Item Null??");
-				reviewList.splice(rnd, 1);
-			}
-			else{
-				//handle grading and storing solution
-
-				//check for input, do nothing if none
-				if(input.length === 0){
-					return;
-				}
-
-				//disable input after submission
-				//document.getElementById('rev-input').disabled = true;
-
-
-				//was the input correct?
-				var correct = inputCorrect();
-
-				//was the input forgiven?
-				var forgiven = (item.forgive.indexOf(input) !== -1);
-
-				if (correct) {
-					//highlight in (default) green
-					$("#rev-input").addClass("correct");
-					//show answer
-					$("#rev-solution").addClass("info");
-				} else if (forgiven){
-					$("#rev-input").addClass("caution");
-				} else {
-					//highight in red
-					$("#rev-input").addClass("error");
-					//show answer
-					$("#rev-solution").addClass("info");
-				}
-
-				//remove from sessionList if correct
-				if (correct) {
-					debugging&&console.log("correct answer");
-					if (reviewList !== null){
-						var oldlen = reviewList.length;
-
-						reviewList.splice(rnd, 1);
-						debugging&&console.log("sessionList.length: "+ oldlen +" -> "+reviewList.length);
-
-						//replace shorter (by one) sessionList to session
-						if (reviewList.length !== 0) {
-							debugging&&console.log("sessionList.length: "+ reviewList.length);
-							sessionSet('User-Review', JSON.stringify(reviewList));
-
-						} else {
-							//reveiw over, delete sessionlist from session
-							sessionStorage.removeItem('User-Review');
-						}
-					}else{
-						console.error("Error: no review session found");
-					}
-				}
-				else{
-					//   if(forgiven){
-					//     debugging&&console.log(input +" has been forgiven. "+item.type);
-					//   return;
-					// }
-					debugging&&console.log("wrong answer");
-				}
-
-				item = markAnswer(item);
-
-				sessionSet(item.index, item);
-
-
-				var list = JSON.parse(sessionStorage.getItem("User-Stats"))||[];
-				var found = false;
-
-				if (list){
-					var i = list.length;
-					while(i--){
-						if (list[i].index == item.index) {
-							list[i] = item;								//replace item if it exists
-							found = true;
-							break;
-						}
-					}
-					if(!found){
-						list = saveToSortedList(list,item);
-					}
-
-				} else {
-					list = [item];
-				}
-
-				sessionSet("User-Stats", JSON.stringify(list));
-				//playAudio();
-
-				//answer submitted, next 'enter' proceeds with script
-				submit = false;
-			}//null garbage collection
-		}
-		else if (e.keyCode == 13 && submit === false) {
-			debugging&&console.log("keystat = " + submit);
-
-			//there are still more reviews in session?
-			if (sessionStorage.getItem('User-Review')) {
-				// debugging&&console.log("found a 'User-Review': " + sessionStorage.getItem('User-Review'));
-
-				setTimeout(function () {
-					debugging&&console.log("refreshing reviewList from storage");
-					var reviewList = JSON.parse(sessionStorage.getItem('User-Review'));
-
-					//cue up first remaining review
-					nextReview(reviewList);
-					debugging&&console.log("checking for empty reviewList");
-					if (reviewList.length === 0){
-
-						debugging&&console.log("session over. reviewList: "+JSON.stringify(reviewList));
-						sessionStorage.removeItem("User-Review");
-					}
-
-					//         document.getElementById('rev-input').disabled = true;
-					$("#rev-solution").removeClass("info");
-					$("#selfstudy").hide().fadeIn('fast');
-
-				}, 1);
-			}
-			else {
-				// no review stored in session, review is over
-				setTimeout(function () {
-
-					$("#selfstudy").hide();
-					//document.getElementById('rev-input').disabled = false;
-					$("#rev-solution").removeClass("info");
-					debugging&&console.log("showResults");
-					showResults();
-					$("#resultwindow").show();
-					debugging&&console.log("showResults completed");
-
-					//*/  //clear session
-					sessionStorage.clear();
-					reviewActive = false;
-
-
-				}, 1);
-			}
-			submit = true;
-
-		}
-	});
+    $("#rev-input").keyup(ReviewUtil.submitResponse);
 
 
     /** Adds the Button
@@ -2880,21 +2526,13 @@ in the hope that you may find it useful.");
         }
     };
 
-	
-
-    
-
-
-    console.info(document.readyState);
-    //document.addEventListener("DOMContentLoaded",
-    //                        function() { hijackRequests(); });
+	console.info(document.readyState);
     console.log("adding DOM listener", document.readyState);
     // Check for file API support.
     if (window.File && window.FileReader && window.FileList && window.Blob) {
 
-
-
-    } else {
+    }
+	else {
         alert('The File APIs are not fully supported in this browser.');
     }
 
@@ -2906,7 +2544,7 @@ in the hope that you may find it useful.");
     console.info(usingHTTPS, window.location.href);
     if (usingHTTPS){
         if (!noNewStuff){  //Don't waste time if user is browsing site
-            getServerResp(APIkey);
+            WanikaniUtil.getServerResp(APIkey);
         }else{
             debugging&&console.log("User is unlikely to have new kanji unlocked");
         }

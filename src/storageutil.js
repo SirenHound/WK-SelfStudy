@@ -69,7 +69,7 @@ var StorageUtil = {
 		//      vocList[v].reading = item.reading;
         if (!found) {
             //provide index for faster searches
-            debugging&&console.log(item.kanji +" not found in vocablist, adding now");
+            console.log(item.kanji +" not found in vocablist, adding now");
             item.i = vocList.length;
             vocList.push(item);
 

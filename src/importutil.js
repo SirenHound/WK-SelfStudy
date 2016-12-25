@@ -16,8 +16,8 @@ var ImportUtil = {
 			vsplit = ",";
 		}
 
-		debugging&&console.log("tsvfile: ");
-		debugging&&console.log("file uploaded: "+CSVs[0].name);
+		if (debugging) { console.log("tsvfile: "); }
+		if (debugging) { console.log("file uploaded: "+CSVs[0].name); }
 		var reader = new FileReader();
 		reader.readAsText(CSVs[0]);
 		reader.onload = function(ev){
@@ -36,10 +36,10 @@ var ImportUtil = {
 				if ((csvHeader === true && i === 0)||  //  Skip header
 					(row === "") // Skip empty rows
 				   ){
-					debugging&&console.log("Skipping row #"+i);
+					if (debugging) { console.log("Skipping row #"+i); }
 
 				}else{
-					debugging&&console.log(row);
+					console.log(row);
 
 
 					var elem = row.split(colsplit);
@@ -76,7 +76,7 @@ var ImportUtil = {
 							c = item.meaning.length;
 
 							while(c--){
-								debugging&&console.log("item.meaning["+c+"]: "+item.meaning[c]);
+								console.log("item.meaning["+c+"]: "+item.meaning[c]);
 							}
 						}else{//todo: provide overwrite option on forced meaning
 							item.meaning=[""];
@@ -88,7 +88,7 @@ var ImportUtil = {
 				}
 			}
 			var JSONstring = JSON.stringify(JSONimport);
-			debugging&&console.log(JSONimport);
+			console.log(JSONimport);
 
 			if (JSONstring.length !== 0) {
 				try {
@@ -113,7 +113,7 @@ var ImportUtil = {
 				}
 				catch (e) {
 					$("#importStatus").text("Parsing Error!");
-					debugging&&console.log(e);
+					console.log(e);
 				}
 
 			}
