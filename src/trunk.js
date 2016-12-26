@@ -12,6 +12,7 @@ var StorageUtil = require('./storageutil.js');
 var ImportUtil = require('./importutil.js');
 var WanikaniUtil = require('./wanikaniutil.js');
 var ReviewUtil = require('./reviewutil.js');
+var ObjectUtil = require('./objectutil.js');
 
 function main(){
     "use strict";
@@ -1503,25 +1504,16 @@ $("#rev-input").keyup(function (e) {
         document.getElementById("editItem").name = index; //using name to save the index
         $("#editStatus").text('Loaded item to edit');
     });
-
-    var isEmpty = function(value) {
-        return (value === void 0 || value === null);
-    };
-	
-	var isArray = function(arg){
-		return Array.isArray ? Array.isArray(arg) : Object.prototype.toString.call(arg) === '[object Array]';
-	};
-
     /** Validates a task object
 	* @param {Task} add - The Task being verified
 	* @returns {Boolean} If the provided task has all the necessary properties to be added to the review list.
 	*/
 	var isItemValid = function(add) {
-        return (!isEmpty(add.kanji) && //kanji property exists
-			!isEmpty(add.meaning) && //meaning property exists
-			!isEmpty(add.reading) && //reading property exists
-			isArray(add.meaning) &&//meaning is an array
-			isArray(add.reading));//reading is an array
+        return (!ObjectUtil.isEmpty(add.kanji) && //kanji property exists
+			!ObjectUtil.isEmpty(add.meaning) && //meaning property exists
+			!ObjectUtil.isEmpty(add.reading) && //reading property exists
+			ObjectUtil.isArray(add.meaning) &&//meaning is an array
+			ObjectUtil.isArray(add.reading));//reading is an array
     };
 
     $("#EditSaveBtn").click(function () {
@@ -1745,7 +1737,7 @@ $("#rev-input").keyup(function (e) {
             while(h--){// only do keys in header, in the header's order. //JSONobject[id]){
                 key = header[h];
                 if(JSONobject[id][key] !== undefined){
-                    if (Array.isArray(JSONobject[id][key])){
+                    if (ObjectUtil.isArray(JSONobject[id][key])){
                         //parse array here
                         line.push(JSONobject[id][key].join("\t"));
                     }else{

@@ -1,4 +1,3 @@
-
 var StorageUtil = {
 	/** Initialise User-Vocab
 	*/
