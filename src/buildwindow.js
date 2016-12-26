@@ -154,11 +154,12 @@ var attachChildNode = function(childNode){
 
 /** Takes a JSON object with the structure of the window to create and builds a DIVElement from that
 * @param {IWindow} windowStructure
+* @param {string} [mainElement = 'div']
 * @returns {DIVElement} The specified window.
 */
-var buildWindow = function(windowStructure) {
+var buildWindow = function(windowStructure, mainElement) {
 	
-	var resultWindow = buildNode('div', {id: windowStructure.id, className: windowStructure.className});
+	var resultWindow = buildNode(mainElement || 'div', {id: windowStructure.id, className: windowStructure.className});
 	for (var attr in windowStructure.other){
 		resultWindow.setAttribute(attr, windowStructure.other[attr]);
 	}

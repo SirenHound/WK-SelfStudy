@@ -65,6 +65,17 @@ var StorageUtil = {
 	setVocList: function(vocList){
 		this.localSet('User-Vocab', vocList);
 	},
+	/** Sets the locks on all Tasks in storage
+	*/
+	refreshLocks: function(){
+		var vocList = StorageUtil.getVocList().map(function(vocItem){
+			console.log("vocList[i] = setLocks(vocList[i]);");
+			vocItem = setLocks(vocItem);  
+			return vocItem;
+		}, this);
+		console.groupEnd();
+		StorageUtil.setVocList(vocList);
+    },
 	/**
 	*/
 	setVocItem: function(item){

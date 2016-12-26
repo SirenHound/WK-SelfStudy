@@ -1,4 +1,5 @@
 var ObjectUtil = require('./objectutil.js');
+var StorageUtil = require('./storageutil.js');
 /** Utilities for interaction with the Wanikani API and general website.
 */
 var WanikaniUtil = {
@@ -35,12 +36,12 @@ var WanikaniUtil = {
                         var kanjiList = this.handleReadyStateFour(xhrk,requestedItem);
 
                         if (requestedItem === 'kanji'){
-                            localSet('User-KanjiList', kanjiList);
+                            StorageUtil.localSet('User-KanjiList', kanjiList);
                             console.log("kanjiList from server", kanjiList);
                             //update locks in localStorage 
                             //pass kanjilist into this function
                             //(don't shift things through storage unecessarily)
-                            refreshLocks();
+                            StorageUtil.refreshLocks();
                         }
 						else{
                             var v = kanjiList.length;
@@ -61,8 +62,8 @@ var WanikaniUtil = {
             setTimeout(function () {
                 var kanjiList = [];
                 console.log("creating dummy response");
-                kanjiList.push({"character": "猫", "srs": "noServerResp"});
                 var SRS = "apprentice"; //prompt("enter SRS for 子", "guru");
+                kanjiList.push({"character": "猫", "srs": "noServerResp"});
                 kanjiList.push({"character": "子", "srs": SRS});
                 kanjiList.push({"character": "品", "srs": "guru"});
                 kanjiList.push({"character": "供", "srs": "guru"});
@@ -76,10 +77,10 @@ var WanikaniUtil = {
 
                 console.log("Server responded with dummy kanjiList: \n"+JSON.stringify(kanjiList));
 
-                localSet('User-KanjiList', kanjiList);
+                StorageUtil.localSet('User-KanjiList', kanjiList);
 
                 //update locks in localStorage
-                refreshLocks();
+                StorageUtil.refreshLocks();
             }, 10000);
         }   
     },

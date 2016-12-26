@@ -10,7 +10,7 @@ module.exports = function(grunt){
 			main:{
 				options: {
 					browserifyOptions:{
-						debug: true
+						//debug: true
 					}
 				},
 				src: 'src/trunk.js',

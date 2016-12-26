@@ -13,6 +13,7 @@ var ImportUtil = require('./importutil.js');
 var WanikaniUtil = require('./wanikaniutil.js');
 var ReviewUtil = require('./reviewutil.js');
 var ObjectUtil = require('./objectutil.js');
+var WanikaniDomUtil = require('./wanikanidomutil.js');
 
 function main(){
     "use strict";
@@ -1868,16 +1869,6 @@ $("#rev-input").keyup(function (e) {
 
     document.getElementById("upload") && document.getElementById("upload").addEventListener('change', ImportUtil.fileUpload, false);
 
-	var refreshLocks = function(){
-		var vocList = StorageUtil.getVocList().map(function(vocItem){
-			debugging&&console.log("vocList[i] = setLocks(vocList[i]);");
-			vocItem = setLocks(vocItem);  
-			return vocItem;
-		}, this);
-		console.groupEnd();
-		StorageUtil.setVocList(vocList);
-    };
-
     
     $("#ImportWKBtn").click(function(){
         WanikaniUtil.getServerResp(APIkey,"vocabulary");
@@ -2356,47 +2347,6 @@ $("#rev-input").keyup(function (e) {
     $("#rev-input").keyup(ReviewUtil.submitResponse);
 
 
-    /** Adds the Button
-	*/
-    var addUserVocabButton = function() {
-        debugging&&console.log("addUserVocabButton()");
-        //Functions (indirect)
-        //    WKSS_add()
-        //    WKSS_edit()
-        //    WKSS_export()
-        //    WKSS_import()
-        //    WKSS_lock()
-        //    WKSS_review()
-
-        var nav = document.getElementsByClassName('nav');
-        debugging&&console.log("generating review list because: initialising script and populating reviews");
-
-
-        if (nav&&nav.length>2) {
-            nav[2].innerHTML = nav[2].innerHTML + "\n\
-<li class=\"dropdown custom\">\n\
-<a class=\"dropdown-toggle custom\" data-toggle=\"dropdown\" href=\"#\" onclick=\"generateReviewList();\">\n\
-<span lang=\"ja\">自習</span>\n\
-Self-Study <i class=\"icon-chevron-down\"></i>\n\
-</a>\n\
-<ul class=\"dropdown-menu\" id=\"WKSS_dropdown\">\n\
-<li class=\"nav-header\">Customize</li>\n\
-<li><a id=\"click\" href=\"#\" onclick=\"WKSS_add();\">Add</a></li>\n\
-<li><a href=\"#\" onclick=\"WKSS_edit();\">Edit</a></li>\n\
-<li><a href=\"#\" onclick=\"WKSS_export();\">Export</a></li>\n\
-<li><a href=\"#\" onclick=\"WKSS_import();\">Import</a></li>\n\
-<!--//   <li><a href=\"#\" onclick=\"WKSS_lock();\">Server Settings</a></li>//-->\n\
-<li class=\"nav-header\">Learn</li>\n\
-<li><a id=\"user-review\" href=\"#\" onclick=\"WKSS_review();\">Please wait...</a></li>\n\
-</ul>\n\
-</li>";
-
-
-        }else{
-            console.error("could not find nav", nav);
-        }
-        console.log("addUserVocab");
-    };
 
 	    /** Error handling
 	* Can use 'error.stack', not cross-browser (though it should work on Firefox and Chrome)
@@ -2439,7 +2389,7 @@ Self-Study <i class=\"icon-chevron-down\"></i>\n\
         // Set up buttons
         try {
             if (typeof localStorage !== "undefined") {
-                addUserVocabButton();
+                WanikaniDomUtil.addUserVocabButton();
 
                 //provide warning to users trying to use the (incomplete) script.
                 debugging&&console.log("this script is still incomplete: \n\
