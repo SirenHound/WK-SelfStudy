@@ -50,7 +50,7 @@ var WanikaniUtil = {
                             }
                         }
                     }
-                };
+                }.bind(this);
 
                 xhrk.send();
                 console.log("below");  
