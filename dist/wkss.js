@@ -3405,6 +3405,7 @@ var WanikaniDomUtil = {
         if (nav&&nav.length>2) {
 			var dropdownMenu = {
 				className: "dropdown custom",
+				id: "customDropdown",
 				childNodes: [{
 					tag: 'a',
 					className: "dropdown-toggle custom",
@@ -3439,9 +3440,9 @@ var WanikaniDomUtil = {
 							id: "click",
 							other: {href: "#",
 								onclick: "WKSS_add();"
-							}
-						},
-						"Add"]
+							},
+							childNodes: ["Add"]
+						}]
 					},
 					{
 						tag: 'li',
@@ -3449,9 +3450,9 @@ var WanikaniDomUtil = {
 							tag: 'a',
 							other: {href: "#",
 								onclick: "WKSS_edit();"
-							}
-						},
-						"Edit"]
+							},
+							childNodes: ["Edit"]
+						}]
 					},
 					{
 						tag: 'li',
@@ -3459,9 +3460,9 @@ var WanikaniDomUtil = {
 							tag: 'a',
 							other: {href: "#",
 								onclick: "WKSS_export();"
-							}
-						},
-						"Export"]
+							},
+							childNodes: ["Export"]
+						}]
 					},
 					{
 						tag: 'li',
@@ -3469,9 +3470,9 @@ var WanikaniDomUtil = {
 							tag: 'a',
 							other: {href: "#",
 								onclick: "WKSS_import();"
-							}
-						},
-						"Import"]
+							},
+							childNodes: ["Import"]
+						}]
 					}]
 						//   <li><a href=\"#\" onclick=\"WKSS_lock();\">Server Settings</a></li>//-->
 //						<li class=\"nav-header\">Learn</li>
