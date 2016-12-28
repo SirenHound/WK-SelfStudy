@@ -3429,6 +3429,9 @@ var WanikaniDomUtil = {
 			var dropdownMenu = {
 				className: "dropdown custom",
 				id: "customDropdown",
+				other: {
+					"data-dropdown": null
+				},
 				childNodes: [{
 					tag: 'a',
 					className: "dropdown-toggle custom",
@@ -3496,11 +3499,26 @@ var WanikaniDomUtil = {
 							},
 							childNodes: ["Import"]
 						}]
+					},
+					{
+						tag: 'li',
+						className: "nav-header",
+						childNodes: ["Learn"]
+					},
+					{
+						tag: 'li',
+						childNodes: [{
+							tag: 'a',
+							id: "user-review",
+							other: {
+								href: "#",
+								onclick: "WKSS_review();"
+							},
+							childNodes: ["Please wait..."]
+						}]
 					}]
 						//   <li><a href=\"#\" onclick=\"WKSS_lock();\">Server Settings</a></li>//-->
-//						<li class=\"nav-header\">Learn</li>
-//						<li><a id=\"user-review\" href=\"#\" onclick=\"WKSS_review();\">Please wait...</a></li>
-//					</ul>
+
 				}]
 			};
 	var dropdownListItem = this.buildWindow(dropdownMenu, 'li');
