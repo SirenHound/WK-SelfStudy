@@ -22,49 +22,6 @@
  */
 
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var buildNode = require('./buildnode.js');
-
-// Create DOM for 'add' window
-var addElement = buildNode('div', {id: "add", className: "WKSS"});
-
-var formElement = buildNode('form', {id: "addForm"});
-addElement.appendChild(formElement);
-
-var buttonElement = buildNode('button', {id: "AddCloseBtn", className: "wkss-close", type: "reset"});
-formElement.appendChild(buttonElement);
-
-var iconElement = buildNode('i', {className: "icon-remove"});
-buttonElement.appendChild(iconElement);
-
-var headerElement = buildNode('h1');
-formElement.appendChild(headerElement);
-
-var headerText = document.createTextNode("Add a new Item");
-headerElement.appendChild(headerText);
-
-var inputKanjiElement = buildNode('input', {id: "addKanji", type: "text", placeholder: "Enter 漢字, ひらがな or カタカナ"});
-formElement.appendChild(inputKanjiElement);
-
-var inputReadingElement = buildNode('input', {id: "addReading", type: "text", title: "Leave empty to add vocabulary like する (to do)", placeholder: "Enter reading"});
-formElement.appendChild(inputReadingElement);
-
-var inputMeaningElement = buildNode('input', {id: "addMeaning", type: "text", placeholder: "Enter meaning"});
-formElement.appendChild(inputMeaningElement);
-
-var pElement = buildNode('p', {id: "addStatus"});
-formElement.appendChild(pElement);
-
-var pText = document.createTextNode("Ready to add..");
-pElement.appendChild(pText);
-
-var execButtonElement = buildNode('button', {id: "AddItemBtn", type: "button"});
-formElement.appendChild(execButtonElement);
-
-var execText = document.createTextNode("Add new Item");
-execButtonElement.appendChild(execText);
-
-module.exports = addElement;
-},{"./buildnode.js":2}],2:[function(require,module,exports){
 /** Builds a node element with an id and className and other attributes if provided
 * @param {string} type - The type of element to create ('div', 'p', etc...)
 * @param {object} [options]
@@ -86,7 +43,7 @@ var buildNode = function(type, options){
 };
 
 module.exports = buildNode;
-},{}],3:[function(require,module,exports){
+},{}],2:[function(require,module,exports){
 var buildNode = require('./buildnode.js');
 
 // tag, id, className, other, childNodes
@@ -296,7 +253,56 @@ var buildWindow = function(windowStructure, mainElement) {
 	return editWindow;
 };*/
 module.exports = buildWindow;
-},{"./buildnode.js":2}],4:[function(require,module,exports){
+},{"./buildnode.js":1}],3:[function(require,module,exports){
+var StorageUtil = require('./storageutil.js');
+var ObjectUtil = require('./objectutil.js');
+var SettingsUtil = require('./settingsutil.js');
+var DisplayWindow = function(){};
+
+DisplayWindow.prototype = {
+    /** Retrieves values from storage to populate 'editItems' menu
+	*/
+    generateEditOptions: function() {
+        var select = document.getElementById('editWindow');
+        //clear the editWindow
+        while (select.firstChild) {
+            select.removeChild(select.firstChild);
+        }
+		//retrieve from local storage
+		var vocabList = StorageUtil.getVocList();
+		
+		var options = vocabList.map(function(task){
+			//form element to save string
+			var opt = document.createElement('option');
+
+			//when is this item up for review
+			var due = task.due||task.date + srsObject[task.level].duration;
+			
+			var review = task.level >= 9 ? "Never" : Date.now() >= due ? "Now" : ObjectUtil.ms2str(due - Date.now());
+
+			var text = task.kanji + " & " +
+				task.reading + " & " +
+				task.meaning + " (" +
+				SettingsUtil.srsObject[task.level].rank +
+				" - Review: " +
+				review + ") Locked: " +
+				task.manualLock;
+
+			opt.value = task.i;
+			opt.innerHTML = text;
+			return opt;//for future use (sorting data etc)
+		}, this);
+		options.forEach(function(opt){
+			select.appendChild(opt);//export item to option menu
+		},this);
+    }
+};
+
+module.exports = new DisplayWindow();
+},{"./objectutil.js":8,"./settingsutil.js":11,"./storageutil.js":12}],4:[function(require,module,exports){
+var StorageUtil = require('./storageutil.js');
+var SetReviewsUtil = require('./setreviewsutil.js');
+
 module.exports = function(){
 
 	var kanji = $("#addKanji").val().toLowerCase();
@@ -324,14 +330,15 @@ module.exports = function(){
 		} else {
 			$("#addMeaning").removeClass("error");
 		}
-	} else {
-		if (debugging) {console.log("building item: "+kanji);}
+	}
+	else {
+		console.log("building item: "+kanji);
 		item.kanji = kanji;
 		item.reading = reading; //optional
 		item.meaning = meaning;
 
 		success = true;
-		if (debugging) {console.log("item is valid");}
+		console.log("item is valid");
 	}
 
 	//on successful creation of item
@@ -340,23 +347,20 @@ module.exports = function(){
 		$("#addKanji").removeClass("error");
 		$("#addMeaning").removeClass("error");
 
-
-
 		//if there are already user items, retrieve vocabList
-		// var vocabList = [];
-		var vocabList = getFullList();
+		var vocabList = StorageUtil.getVocList();
 
-		if (debugging) {console.log("vocabList retrieved, length: "+vocabList.length);}
+		console.log("vocabList retrieved, length: "+vocabList.length);
 		//check stored user items for duplicates ****************** to do: option for editing duplicate item with new input
-		if(checkForDuplicates(vocabList,item)) {
+		if(SetReviewsUtil.checkForDuplicates(vocabList,item)) {
 			$("#addStatus").text("Duplicate Item detected!");
 			$("#addKanji").addClass("error");
 			return;
 		}
 
-		setVocItem(item);
+		SetReviewsUtil.setVocItem(item);
 
-		if (debugging) {console.log("clear form");}
+		console.log("clear form");
 		$("#addForm")[0].reset();
 
 		//--------------------------------------------------------------------------------------------------------
@@ -368,7 +372,7 @@ module.exports = function(){
 		//--------------------------------------------------------------------------------------------------------
 	}
 };
-},{}],5:[function(require,module,exports){
+},{"./setreviewsutil.js":10,"./storageutil.js":12}],5:[function(require,module,exports){
 module.exports = function(){
 	// {"level":"17","meaning_explanation":"This word consists of kanji with hiragana attached. Because the hiragana ends with an [ja]う[/ja] sound, you know this word is a verb. The kanji itself means [kanji]flourish[/kanji] or [kanji]prosperity[/kanji], so the verb vocab versions of these would be [vocabulary]to flourish[/vocabulary] or [vocabulary]to prosper[/vocabulary].","reading_explanation":"Since this word consists of a kanji with hiragana attached, you can bet that it will use the kun'yomi reading. You didn't learn that reading with this kanji, so here's a mnemonic to help you: What do you flourish at? You're an amazing [vocabulary]soccer[/vocabulary] ([ja]さか[/ja]) player who flourishes and prospers no matter where you go to play this wonderful (but not as good as baseball) sport.","en":"To Flourish, To Prosper","kana":"さかえる","sentences":[["中国には、覚せい剤の生産で栄えていた村がありました。","There was a village in China flourishing on their production of stimulants. "]],"parts_of_speech_ids":["4","19"],"part_of_speech":"Intransitive Verb, Ichidan Verb","audio":"2e194cbf194371cd478480d6ea67769da623e99a.mp3","meaning_note":null,"reading_note":null,"related":[{"kan":"栄","en":"Prosperity, Flourish","slug":"栄"}]}
 
@@ -590,18 +594,9 @@ var ImportUtil = {
 
 module.exports = ImportUtil;
 },{}],7:[function(require,module,exports){
-var ObjectUtil = {
-	isEmpty: function(value) {
-        return (value === void 0 || value === null);
-    },
-	isArray: function(arg){
-		return Array.isArray ? Array.isArray(arg) : Object.prototype.toString.call(arg) === '[object Array]';
-	}
-};
+var StorageUtil = require('./storageutil.js');
 
-module.exports = ObjectUtil;
-},{}],8:[function(require,module,exports){
-var ReviewUtil = {
+var MarkingUtil = {
 	/** Takes an array of strings and returns the portions before left brackets '(' but only for strings that have them. It is used to add synonym values to the answer list.
 	* @param {Array.<string>} solution - An array of acceptable answers for the Task
 	* @returns {Array.<string>} Parts of the solution left of left bracket in strings where it exists
@@ -828,8 +823,374 @@ var ReviewUtil = {
 	}
 };
 
-module.exports = ReviewUtil;
+module.exports = MarkingUtil;
+},{"./storageutil.js":12}],8:[function(require,module,exports){
+var ObjectUtil = {
+   /** Converts number of milliseconds into a readable string
+	* @param {number} milliseconds - The number of milliseconds to approximate
+	* @returns {string} Readable time frame ('2 months', '3 hours', '1 week' etc).
+	*/
+	ms2str: function(milliseconds){
+        var num; //number of months weeks hours etc
+        //more time has elapsed than required for the level
+        if(milliseconds <= 0) {
+            return "Now" ;
+        }
+        if(milliseconds > 2628000000) {//About a month
+            num = Math.floor(milliseconds/2628000000).toString()+" month";
+            if (num !== "1 month"){
+                return num+"s";
+            }else{
+                return num;
+            }
+        }
+        if(milliseconds > 604800000) {//A week
+            num = Math.floor(milliseconds/604800000).toString()+" week";
+            if (num !== "1 week"){
+                return num+"s";
+            }else{
+                return num;
+            }
+        }
+        if(milliseconds > 86400000) {//A day
+            num = Math.floor(milliseconds/86400000).toString()+" day";
+            if (num !== "1 day"){
+                return num+"s";
+            }else{
+                return num;
+            }
+        }
+        if(milliseconds > 3600000) {//An hour
+            num = Math.floor(milliseconds/3600000).toString()+" hour";
+            if (num !== "1 hour"){
+                return num+"s";
+            }else{
+                return num;
+            }
+        }
+        if(milliseconds > 60000) {//A minute
+            num = Math.floor(milliseconds/60000).toString()+" minute";
+            if (num !== "1 minute"){
+                return num+"s";
+            }else{
+                return num;
+            }
+        }
+        if(milliseconds > 0) {//A second is 1000, but need to return something for less than one too
+            num = Math.floor(milliseconds/1000).toString()+" second";
+            if (num !== "1 second"){
+                return num+"s";
+            }else{
+                return num;
+            }
+        }
+    },
+    /** Gets the Kanji characters in a given string.
+	* @param {string} vocabString -
+	* @return {Array.<string>} An array of the kanji components in the given string
+	*/
+    getComponents: function(vocabString){
+        return Array.prototype.filter.call(vocabString, function(ch){
+            return /^[\u4e00-\u9faf]+$/.test(ch);
+        }, this);
+    },
+
+	isEmpty: function(value) {
+        return (value === void 0 || value === null);
+    },
+	isArray: function(arg){
+		return Array.isArray ? Array.isArray(arg) : Object.prototype.toString.call(arg) === '[object Array]';
+	}
+};
+
+module.exports = ObjectUtil;
 },{}],9:[function(require,module,exports){
+var ServerUtil = {
+	//Make asyncronous call for the API of the currently logged in user, ask for confirmation, don't be creepy :P
+	getLoggedInUserAPI: function(callback){
+		var xhrk = this.createCORSRequest('get', 'https://www.wanikani.com/account');
+		/**
+		* @param {Event} evt - evt.type === "readystatechange"
+		*/
+		xhrk.onreadystatechange = function(evt) {
+			if (xhrk.readyState == 4){
+				var divElement = document.createElement('div');
+				divElement.innerHTML = xhrk.responseText;
+				
+				var APIkey = Array.prototype.filter.call(divElement.getElementsByTagName("input"), function(elem){
+					return elem.getAttribute("placeholder") === "Key has not been generated";
+				})[0].value;
+				console.log(APIkey);
+				callback(APIkey);
+			}
+		}.bind(this);
+		xhrk.send();
+	},
+	createCORSRequest: function(method, url){
+		var xhr = new XMLHttpRequest();
+		if ("withCredentials" in xhr){
+			xhr.open(method, url, true);
+		}
+		else if (typeof XDomainRequest !== "undefined"){
+			xhr = new XDomainRequest();
+			xhr.open(method, url);
+		}
+		else {
+			xhr = null;
+		}
+		return xhr;
+	}
+};
+
+module.exports = ServerUtil;
+},{}],10:[function(require,module,exports){
+var StorageUtil = require('./storageutil.js');
+var ObjectUtil = require('./objectutil.js');
+var SettingsUtil = require('./settingsutil.js');
+
+/** Prepare Reviews and put them into storage.
+*/
+var SetReviewsUtil = {
+	
+	/** Checks if an item's kanji is represented in a list
+	* @returns {boolean}
+	*/
+    checkForDuplicates: function(list, item){
+		return list.some(function(a){return a.kanji === item.kanji;});
+	},
+	/** Sets the locks on all Tasks in storage
+	*/
+	refreshLocks: function(){
+		var vocList = StorageUtil.getVocList().map(function(vocItem){
+			console.log("vocList[i] = setLocks(vocList[i]);");
+			vocItem = this.setLocks(vocItem);  
+			return vocItem;
+		}, this);
+		console.groupEnd();
+		StorageUtil.setVocList(vocList);
+    },
+		/** Creates a lookup array for each kanji with its srs level. Used for displaying component levels.
+	* @param item
+	* @param kanjilist
+	* @returns An array of the kanji with SRS values for each kanji component.
+	* @example
+        eg. 折り紙:
+        compSRS = [{"kanji": "折", "srs": "guru"}, {"kanji": "紙", "srs": "apprentice"}]
+	*/
+	getCompKanji: function(item, kanjiList){
+		kanjiList = kanjiList || [];
+		var GUPPY_LIMIT = 100;
+
+        var kanjiReady = false; //indicates if the kanjiList has been populated
+        var userGuppy = false; //indicates if kanjiList has less than 100 items
+        var kanjiObj = {};
+
+        //has the server responded yet
+        if (kanjiList.length > 0){
+            console.log("kanjiList is > 0");
+            kanjiReady = true;
+			//is there less than 100 kanji in the response
+            if (kanjiList.length < GUPPY_LIMIT){
+                console.log("kanjiList is < " + GUPPY_LIMIT);
+                userGuppy = true;
+            }
+            //create lookup object
+			kanjiList.forEach(function(kanji){
+				kanjiObj[kanji.character] = kanji;
+            }, this);
+        }
+
+        var components = item.components;
+		var compSRS = components.map(function(component){
+            var matched = false;
+
+            //if the character in the item exists in the kanjiObj index sourced from server
+			if (kanjiObj[component] !== void 0){ //match found
+				return {
+					kanji: component,
+					srs: kanjiObj[component].srs
+				};
+			}
+			else { // character was not in the kanjiObj index
+                if (kanjiReady){ //was there a server response?
+                    if (userGuppy){ //is the user a guppy (kanji probably matches a turtles response)
+                        console.log("matched=false, kanjiList.length: "+kanjiList.length);
+                        return {
+							kanji: component,
+							srs: "noMatchGuppy"
+						};
+                    }
+					else{ //user is a turtle, kanji must not have been added to WK (yet)
+                        console.log("matched=false, kanjiList.length: "+kanjiList.length);
+                        return {
+							kanji: component,
+							srs: "noMatchWK"
+						};
+                    }
+                }
+				else{
+                    // No server response
+					return {
+						kanji: component,
+						srs: "noServerResp"
+					};
+                }
+            }
+        }, this);
+        return compSRS;
+    },
+
+	isKanjiLocked: function(srsitem, kanjiList, locksOn){
+		// Enumeration "yes", "no", "DB"
+        var locked = "no";
+        if (locksOn){
+			// "yes":	item will be locked while there is no database connection.
+			//			if the server response indicates that it has been unlocked, only then will it be available for review
+			
+			// Kanji with these levels will be locked
+			var lockedSrsLevels = ["apprentice", "noServerResp", "unreached"];
+			// Task is unlocked by default, Check locks on each Kanji encountered
+            var componentList = this.getCompKanji(srsitem, kanjiList);
+            // eg: componentList = getCompKanji("折り紙", kanjiList);
+            // componentList = [{"kanji": "折", "srs": "guru"}, {"kanji": "紙", "srs": "apprentice"}]
+            var isLocked = componentList.some(function(component){
+                //look for locked kanji in list
+                if (component.srs == "apprentice" ||
+                    component.srs == "noServerResp"||
+                    component.srs == "unreached"
+                   ){
+                    locked = "yes";
+					return true; // Ends 'some' loop, locked kanji overrides everything.
+                }
+				//DB locks get special state
+                else if (component.srs == "noMatchWK" ||
+					component.srs == "noMatchGuppy"){
+                    locked = "DB";
+                    //"DB"	: database limitations.
+                    // Kanji was not found, either user is Guppy, or WK doesn't have it.
+					return false;
+                }
+			}, this);
+        }
+        //locked will be either "yes","no", or "DB"
+        return locked;
+    },
+    /** Manages the locked and manualLock properties of srsitem. This is to stop items being locked again after they have been unlocked if any of the kanji used falls below the unlock threshold (eg. if the 勉 in 勉強 falls back to apprentice, we do not want to lock up 勉強 again.)
+	* @param {Object} item
+	* @param {string} item.locked - (String enumeration) A real time evaluation of the item (is any of the kanji in the word locked?)
+	* @param {string} item.manualLock - (String enumeration) Will return 'no' if .locked has ever returned 'no'.
+	* @returns {ITask} item
+	*/
+    setLocks: function(item, kanjiList){
+        //once manualLock is "no" it stays "no". Only run this if it is true, "yes" or "DB"
+        if (item.manualLock !== false && item.manualLock !== "no" && item.manualLock !== "n"){
+
+            kanjiList = kanjiList||[];
+
+            item.components = ObjectUtil.getComponents(item.kanji);
+
+            item.locked = this.isKanjiLocked(item, kanjiList, SettingsUtil.LOCKS_ENABLED);
+
+            item.manualLock = item.locked !== "no"; //cast manualLock to boolean
+        }else{
+            item.manualLock = false;
+        }
+
+        console.log("setting locks for "+ item.kanji +": locked: "+item.locked+", manualLock: "+ item.manualLock);
+		
+		//phase out manualLock
+		item.achieved = item.manualLock;
+
+        return item;
+    },
+
+	/**
+	*/
+	setVocItem: function(item){
+        //Assumption: item comes only with kanji, reading and meaning
+        item.level = 0;
+        item.date = Date.now();
+        item.manualLock = "";
+		var kanjiList = StorageUtil.localGet('User-KanjiList');
+        item = this.setLocks(item, kanjiList);
+		 //0.1.9 adding in 'due' property to make review building simpler
+        item.due = item.date + SettingsUtil.srsObject[item.level].duration;
+
+        var vocList = StorageUtil.getVocList();
+
+		var found = vocList.find(function(task){
+            return task.kanji === item.kanji;
+        }, this);
+		
+        if (!found) {
+            //provide index for faster searches
+            console.log(item.kanji +" not found in vocablist, adding now");
+            item.i = vocList.length;
+			vocList.push(item);
+
+            StorageUtil.localSet('User-Vocab',vocList);
+        }
+    }
+};
+
+module.exports = SetReviewsUtil;
+},{"./objectutil.js":8,"./settingsutil.js":11,"./storageutil.js":12}],11:[function(require,module,exports){
+var hrs = 60*60*1000;
+var days = 24*hrs;
+var weeks = 7*days;
+
+var WanikaniUtil = require('./wanikaniutil.js');
+var StorageUtil = require('./storageutil.js');
+
+var SettingsUtil = {
+
+//take out of here soon!
+	//Called by reference to xhrk
+	onStateChangeHandler: function() {
+		if (this.readyState == 4){
+			var kanjiList = WanikaniUtil.handleReadyStateFour(this, this.requestedItem);
+
+			if (this.requestedItem === 'kanji'){
+				StorageUtil.localSet('User-KanjiList', kanjiList);
+				console.log("kanjiList from server", kanjiList);
+				//update locks in localStorage 
+				//pass kanjilist into this function
+				//(don't shift things through storage unecessarily)
+//--
+				SetReviewsUtil.refreshLocks();
+			}
+			else{
+				var v = kanjiList.length;
+				console.log(v + " items found, attempting to import");
+				while (v--){
+//--
+					SetReviewsUtil.setVocItem(kanjiList[v]);
+				}
+			}
+		}
+	},
+
+	// Only one... for now. ;)
+	users: [],
+	LOCKS_ENABLED: true,
+	    //srs 4h, 8h, 24h, 3d (guru), 1w, 2w (master), 1m (enlightened), 4m (burned)
+    
+	srsObject: [
+		{level: 0, rank: "Started",		duration: 0}, 
+		{level: 1, rank: "Apprentice",	duration: 4*hrs},
+		{level: 2, rank: "Apprentice",	duration: 8*hrs},
+		{level: 3, rank: "Apprentice",	duration: 1*days},
+		{level: 4, rank: "Apprentice",	duration: 3*days},
+		{level: 5, rank: "Guru",		duration: 1*weeks},
+		{level: 6, rank: "Guru",		duration: 2*weeks},
+		{level: 7, rank: "Master",		duration: 730*hrs},
+		{level: 8, rank: "Enlightened",	duration: 2922*hrs},
+		{level: 9, rank: "Burned"}
+	]
+};
+
+module.exports = SettingsUtil;
+},{"./storageutil.js":12,"./wanikaniutil.js":16}],12:[function(require,module,exports){
 var StorageUtil = {
 	/** Initialise User-Vocab
 	*/
@@ -838,6 +1199,31 @@ var StorageUtil = {
 			this.localSet("User-Vocab", []);
 		}
 	},
+	/** Handle the users API key.
+	* @param {string} APIkey - the users API key to set. If given "YOUR_API_HERE", it will return the key in browser storage.
+	* @returns {string} the users API key as supplied and stored, or in the case of "YOUR_API_HERE" being passed, the stored key.
+	*/
+    getSetApi: function(APIkey){
+        var storedAPI = localStorage.getItem('Wanikani-API');
+        if (!APIkey || APIkey === "YOUR_API_HERE"){
+            if (storedAPI !== null && storedAPI !== "undefined"){
+                APIkey = storedAPI;
+            }
+        }
+		else{
+            //API has been set in code.
+            if (storedAPI !== APIkey){
+                StorageUtil.saveUserApi(APIkey);//overwrite with new API
+            }
+        }
+        return APIkey;
+    },
+	saveUserApi: function(APIkey){
+		if (APIkey){
+			this.localSet("Wanikani-API", APIkey);
+		}
+	},
+
 	parseString: function(strObj){
         //avoids duplication of code for sesssionGet and localGet
         var obj;
@@ -896,50 +1282,11 @@ var StorageUtil = {
     },
 	setVocList: function(vocList){
 		this.localSet('User-Vocab', vocList);
-	},
-	/** Sets the locks on all Tasks in storage
-	*/
-	refreshLocks: function(){
-		var vocList = StorageUtil.getVocList().map(function(vocItem){
-			console.log("vocList[i] = setLocks(vocList[i]);");
-			vocItem = setLocks(vocItem);  
-			return vocItem;
-		}, this);
-		console.groupEnd();
-		StorageUtil.setVocList(vocList);
-    },
-	/**
-	*/
-	setVocItem: function(item){
-        //Assumption: item comes only with kanji, reading and meaning
-        item.level = 0;
-        item.date = Date.now();
-        item.manualLock = "";
-        item = setLocks(item);
-		 //0.1.9 adding in 'due' property to make review building simpler
-        item.due = item.date + srsObject[item.level].duration;
-
-        var vocList = localGet('User-Vocab')||[];
-
-		var found = vocList.find(function(task){
-            return task.kanji === item.kanji;
-        }, this);
-		//add meaning and reading to existing item
-		//        vocList[v].meaning = item.meaning;
-		//      vocList[v].reading = item.reading;
-        if (!found) {
-            //provide index for faster searches
-            console.log(item.kanji +" not found in vocablist, adding now");
-            item.i = vocList.length;
-            vocList.push(item);
-
-            localSet('User-Vocab',vocList);
-        }
-    }
+	}
 };
 
 module.exports = StorageUtil;
-},{}],10:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 /*  This is the original code that I am breaking into bite size bits */
 //NEED TO MAKE SURE BROWSERIFY PUTS THIS ON THE TOP
 
@@ -951,26 +1298,39 @@ module.exports = StorageUtil;
  */
  
 var StorageUtil = require('./storageutil.js');
+var SettingsUtil = require('./settingsutil.js');
 var ImportUtil = require('./importutil.js');
 var WanikaniUtil = require('./wanikaniutil.js');
-var ReviewUtil = require('./reviewutil.js');
+var MarkingUtil = require('./markingutil.js');
+var SetReviewsUtil = require('./setreviewsutil.js');
 var ObjectUtil = require('./objectutil.js');
 var WanikaniDomUtil = require('./wanikanidomutil.js');
+var ServerUtil = require('./serverutil');
+var UserClass = require('./userclass.js');
 
+// Make a display window class for all inputs, this is an instance of such.
+var editWindowInst = require('./editwindow.js');
 function main(){
     "use strict";
 
     $("head").prepend("<script src='https://cdn.jsdelivr.net/jquery.mockjax/1.6.1/jquery.mockjax.js'></script>");
 
-    var APIkey = "YOUR_API_HERE";
-    var locksOn = true; //Disable vocab locks (unlocked items persist until deleted)
+//    var APIkey = "YOUR_API_HERE";
+    var APIkey = StorageUtil.getSetApi();
+	var userFactory = function(APIkey){
+		this.loggedInUser = new UserClass(APIkey);
+	};
+	var user = {};
+	ServerUtil.getLoggedInUserAPI(userFactory.bind(user));
+    console.info("logged in user?", user);
+	var locksOn = true; //Disable vocab locks (unlocked items persist until deleted)
     var lockDB = true; //Set to false to unlock Kanji is not available on WaniKani (ie. not returned by API)
     var reverse = true; //Include English to ひらがな reading reviews
     var debugging = true;
     var asWK = true; //Push user reviews into the main WK review queue
 
     // shut up JSHint
-    /* jshint multistr: true , jquery: true, expr: true, indent:2 */
+    /* jshint jquery: true, expr: true, indent:2 */
     /* global window, wanakana, XDomainRequest */
 
     /** Debugging
@@ -987,15 +1347,8 @@ function main(){
 	
     $("head").prepend('<script src="https://rawgit.com/WaniKani/WanaKana/master/lib/wanakana.js" type="text/javascript"></script>');
     
-    var localSet = function(strName, obj){
-        debugging&&console.log(strName + " is of type " + typeof obj);
-        if (typeof obj === "object")
-            obj=JSON.stringify(obj);
-        localStorage.setItem(strName, obj);
-    };
-
 	//track versions & datatypes
-	localSet("WKSSdata", {
+	StorageUtil.localSet("WKSSdata", {
         v: "0.1.13",
         propertyType: {
 			meaning: "array", reading: "array", kanji: "string", i:"number", components: "array", date: "number", due: "number", locked: "string", manualLock: "string"
@@ -1076,28 +1429,6 @@ function main(){
             }
         });
     });
-
-	/** Handle the users API key.
-	* @param {string} APIkey - the users API key to set. If given "YOUR_API_HERE", it will return the key in browser storage.
-	* @returns {string} the users API key as supplied and stored, or in the case of "YOUR_API_HERE" being passed, the stored key.
-	*/
-    var getSetApi = function(APIkey){
-        var storedAPI = localStorage.getItem('WaniKani-API');
-        if (APIkey === "YOUR_API_HERE"){
-            if (storedAPI !== null){
-                APIkey = storedAPI;
-            }
-        }
-		else{
-            //API has been set in code.
-            if (storedAPI !== APIkey){
-                localSet('WaniKani-API', APIkey);//overwrite with new API
-            }
-        }
-        return APIkey;
-    };
-    APIkey = getSetApi(APIkey);
-
     //--------------Start Insert Into WK Review Functions--------------
 
 	/** Messing around with vanilla WaniKani review variables
@@ -1250,7 +1581,7 @@ function main(){
         }
 		else{
             debugging&&console.log("reviewList is empty: "+JSON.stringify(reviewList));
-			document.getElementById('user-review').innerHTML = soonest<Infinity? "Next Review in "+ms2str(soonest) : "No Reviews Available";
+			document.getElementById('user-review').innerHTML = soonest<Infinity? "Next Review in "+ObjectUtil.ms2str(soonest) : "No Reviews Available";
 		}
         var strReviews = numReviews.toString();
 
@@ -1263,8 +1594,7 @@ function main(){
         // return the number of reviews
         debugging&&console.log(numReviews.toString() +" reviews created");
         if (numReviews > 0){
-            var reviewString = (soonest !== void 0)? "<br/>\
-More to come in "+ms2str(soonest):"";
+            var reviewString = (soonest !== void 0)? "<br/>\r\nMore to come in "+ObjectUtil.ms2str(soonest):"";
             document.getElementById('user-review').innerHTML = "Review (" + strReviews + ")" + reviewString;
         }
     };
@@ -1289,47 +1619,18 @@ window.generateReviewList = function() {
 // event function to open "add window" and close any other window that might be open at the time.
 window.WKSS_add = function () {
 	//show the add window
-	$("#add").show();
+	$("#WKSS-add").show();
 	//hide other windows
-	$("#export").hide();
-	$("#import").hide();
-	$("#edit").hide();
-	$("#selfstudy").hide();
+	$("#WKSS-export").hide();
+	$("#WKSS-import").hide();
+	$("#WKSS-edit").hide();
+	$("#WKSS-selfstudy").hide();
 };
 
-//'add window' html text
-var addHtml = '\n\
-<div id="add" class="WKSS">\n\
-<form id="addForm">\n\
-<button id="AddCloseBtn" class="wkss-close" type="reset"><i class="icon-remove"></i></button>\n\
-<h1>Add a new Item</h1>\n\
-<input type="text" id="addKanji" placeholder="Enter 漢字, ひらがな or カタカナ">\n\
-<input type="text" id="addReading" title="Leave empty to add vocabulary like する (to do)" placeholder="Enter reading">\n\
-<input type="text" id="addMeaning" placeholder="Enter meaning">\n\
-\n\
-<p id="addStatus">Ready to add..</p>\n\
-<button id="AddItemBtn" type="button">Add new Item</button>\n\
-</form>\n\
-</div>\n';
-
-//add html to page source
-$("body").append(addHtml);
-
 //hide add window ("div add" code that was just appended)
-$("#add").hide();
+$("#WKSS-add").hide();
 
-//function to fire on click event for "Add new Item"
-$("#AddItemBtn").click(function () {
-	handleAddClick();
-});
-
-$("#AddCloseBtn").click(function () {
-	$("#add").hide();
-	$("#addForm")[0].reset();
-	$("#addStatus").text('Ready to add..');
-	$("#addKanji").removeClass("error");
-	$("#addMeaning").removeClass("error");
-});
+var handleAddClick = require('./handleAddClick.js');
 
 
 
@@ -1379,151 +1680,14 @@ function getFullList(){
 *  Edit Items
 */
 window.WKSS_edit = function () {
-	generateEditOptions();
-	$("#edit").show();
+	editWindowInst.generateEditOptions();
+	$("#WKSS-edit").show();
 	//hide other windows
-	$("#export").hide();
-	$("#import").hide();
-	$("#add").hide();
-	$("#selfstudy").hide();
+	$("#WKSS-export").hide();
+	$("#WKSS-import").hide();
+	$("#WKSS-add").hide();
+	$("#WKSS-selfstudy").hide();
 };
-
-$("body").append("                                                          \
-<div id=\"edit\" class=\"WKSS\">                                               \
-<form id=\"editForm\">                                                                    \
-<button id=\"EditCloseBtn\" class=\"wkss-close\" type=\"button\"><i class=\"icon-remove\"></i></button>\
-<h1>Edit your Vocab</h1>                                                \
-<select id=\"editWindow\" size=\"8\"></select>\
-<input type=\"text\" id=\"editItem\" name=\"\" size=\"40\" placeholder=\"Select vocab, click edit, change and save!\">\
-\
-<p id=\"editStatus\">Ready to edit..</p>\
-<button id=\"EditEditBtn\" type=\"button\">Edit</button>\
-<button id=\"EditSaveBtn\" type=\"button\">Save</button>         \
-<button id=\"EditDeleteBtn\" type=\"button\" title=\"Delete selected item\">Delete</button>         \
-<button id=\"EditDeleteAllBtn\" type=\"button\" title=\"本当にやるの？\">Delete All</button>   \
-<button id=\"ResetLevelsBtn\" type=\"button\">Reset levels</button>         \
-</form>                                                                   \
-</div>");
-$("#edit").hide();
-
-$("#EditEditBtn").click(function () {
-	//get handle for 'select' area
-	var select = document.getElementById("editWindow");
-
-	//get the index for the currently selected item
-	var index = select.selectedIndex; //select.options[select.selectedIndex].value is not required, option values are set to index
-	var vocabList = StorageUtil.getVocList();
-	vocabList = vocabList.reverse();
-	document.getElementById("editItem").value = JSON.stringify(vocabList[index]);
-	document.getElementById("editItem").name = index; //using name to save the index
-	$("#editStatus").text('Loaded item to edit');
-});
-
-$("#EditSaveBtn").click(function () {
-	if ($("#editItem").val().length !== 0) {
-		//-- be aware
-		//deleting one item may cause mismatch if i is property of item in list
-		try {
-			var index = document.getElementById("editItem").name;
-			var item = JSON.parse(document.getElementById("editItem").value.toLowerCase());
-			var m = item.meaning.length;
-			while(m--){
-				if (item.meaning[m] === ""){
-					delete item.meaning[m];
-				}
-			}
-			var fullList = getFullList().reverse();
-
-
-			if (isItemValid(item) &&//item is valid
-				!(checkForDuplicates(fullList,item) && //kanji (if changed) is not already in the list
-				  fullList[index].kanji !== item.kanji)) {//unless it is the item being edited
-
-
-				var srslist = getSrsList().reverse();
-				//get srs components of item(list)
-
-				fullList[index] = item;//does not have srs stuff, re-add it now
-
-				debugging&&console.log(fullList[index]);
-				debugging&&console.log(srslist[index]);
-				fullList[index].date = srslist[index].date;
-				fullList[index].level = srslist[index].level;
-				fullList[index].locked = srslist[index].locked;
-				fullList[index].manualLock = srslist[index].manualLock;
-
-				fullList = fullList.reverse(); //reset order of array
-
-				localSet('User-Vocab', fullList);
-
-				generateEditOptions();
-				$("#editStatus").html('Saved changes!');
-				document.getElementById("editItem").value = "";
-				document.getElementById("editItem").name = "";
-
-			}
-			else{
-				$("#editStatus").text('Invalid item or duplicate!');
-				alert(isItemValid(item).toString() +" && ！("+ checkForDuplicates(fullList,item).toString()+" && !("+fullList[index].kanji+" !== "+item.kanji+")");
-
-			}
-		}
-		catch (e) {
-			$("#editStatus").text(e);
-		}
-	}
-});
-
-$("#EditDeleteBtn").click(function () {
-	//select options element window
-	var select = document.getElementById("editWindow");
-
-	//index of selected item
-	var item = select.options[select.selectedIndex].value;
-
-	//fetch JSON strings from storage and convert them into Javascript literals
-	var vocabList = getFullList();
-
-	//starting at selected index, remove 1 entry (the selected index).
-	if (item > -1) {
-		if (vocabList !== null){
-			vocabList.splice(item, 1);
-		}
-	}
-
-	//yuck
-	if (vocabList.length !== 0) {
-		localSet('User-Vocab', vocabList);
-	}
-	else {
-		localStorage.removeItem('User-Vocab');
-	}
-
-	updateEditGUI();
-
-	$("#editStatus").text('Item deleted!');
-});
-
-$("#EditDeleteAllBtn").click(function () {
-	var deleteAll = confirm("Are you sure you want to delete all entries?");
-	if (deleteAll) {
-
-		//drop local storage
-		localStorage.removeItem('User-Vocab');
-
-
-		updateEditGUI();
-
-		$("#editStatus").text('All items deleted!');
-	}
-});
-
-
-$("#EditCloseBtn").click(function () {
-	$("#edit").hide();
-	$("#editForm")[0].reset();
-	$("#editStatus").text('Ready to edit..');
-});
 
 /*
 *  Export
@@ -1537,57 +1701,6 @@ window.WKSS_export = function () {
 	$("#selfstudy").hide();
 };
 
-$("body").append('                                                          \
-<div id="export" class="WKSS">                                               \
-<form id="exportForm">                                                                    \
-<button id="ExportCloseBtn" class="wkss-close" type="button"><i class="icon-remove"></i></button>\
-<h1>Export Items</h1>                                                \
-<textarea cols="50" rows="18" id="exportArea" placeholder="Export your stuff! Sharing is caring ;)"></textarea>                           \
-\
-<p id="exportStatus">Ready to export..</p>                                        \
-<button id="ExportItemsBtn" type="button">Export Items</button>\
-<button id="ExportSelectAllBtn" type="button">Select All</button>\
-<button id="ExportCsvBtn" type="button">Export CSV</button>\
-</form>                                                                   \
-</div>');
-$("#export").hide();
-
-
-$("#ExportItemsBtn").click(function () {
-
-	if (localStorage.getItem('User-Vocab')) {
-		$("#exportForm")[0].reset();
-		var vocabList = StorageUtil.getVocList();
-		$("#exportArea").text(JSON.stringify(vocabList));
-		$("#exportStatus").text("Copy this text and share it with others!");
-	}
-	else {
-		$("#exportStatus").text("Nothing to export yet :(");
-	}
-});
-
-$("#ExportSelectAllBtn").click(function () {
-	if ($("#exportArea").val().length !== 0) {
-		select_all("exportArea");
-		$("#exportStatus").text("Don't forget to CTRL + C!");
-	}
-});
-
-$("#ExportCsvBtn").click(function () {
-	var vocabList = getFullList();
-	var CsvFile = createCSV(vocabList);
-	window.open(CsvFile);
-});
-
-$("#ExportCloseBtn").click(
-	function () {
-		$("#export").hide();
-		$("#exportForm")[0].reset();
-		$("#exportArea").text("");
-		$("#exportStatus").text('Ready to export..');
-	}
-);
-
 /*
 *  Import
 */
@@ -1599,90 +1712,6 @@ window.WKSS_import = function () {
 	$("#edit").hide();
 	$("#selfstudy").hide();
 };
-
-$("body").append('                                                          \
-<div id="import" class="WKSS">                                               \
-<form id="importForm">                                                                    \
-<button id="ImportCloseBtn" class="wkss-close" type="reset"><i class="icon-remove"></i></button>\
-<h1>Import Items</h1>\
-<textarea cols="50" rows="18" id="importArea" placeholder="Paste your stuff and hit the import button! Use with caution!"></textarea>                     \
-\
-<p id="importStatus">Ready to import..</p>                                        \
-<label class="button" id="ImportItemsBtn" style="display:inline;">Import Items</label>\
-\
-<label id="ImportCsvBtn" class="button" style="display:inline;cursor: pointer;">Import CSV         \
-\
-<input type="file" id="upload" accept=".csv,.tsv" style="height:0px;width:0px;background:red;opacity:0;filter:opacity(1);" />\
-\
-</label>\
-\
-<label class="button" id="ImportWKBtn" style="display:inline;"><i class="icon-download-alt"></i> WK</label>\
-</form>                                                                   \
-</div>');
-$("#import").hide();
-
-document.getElementById("upload") && document.getElementById("upload").addEventListener('change', ImportUtil.fileUpload, false);
-
-
-$("#ImportCsvBtn").click(function () {
-});
-
-$("#ImportWKBtn").click(function(){
-	WanikaniUtil.getServerResp(APIkey,"vocabulary");
-	debugging&&console.log("maybe?");
-});
-
-$("#ImportItemsBtn").click(function () {
-
-	if ($("#importArea").val().length !== 0) {
-		try {
-			var add = JSON.parse($("#importArea").val().toLowerCase());
-			alert(JSON.stringify(add));
-			if (checkAdd(add)) {
-				$("#importStatus").text("No valid input (duplicates?)!");
-				return;
-			}
-
-			var newlist;
-			var srslist = [];
-			if (localStorage.getItem('User-Vocab')) {
-				var vocabList = StorageUtil.getVocList();
-				srslist = getSrsList();
-				newlist = vocabList.concat(add);
-			}
-			else {
-				newlist = add;
-
-
-			}
-			var i = add.length;
-			while(i--){
-				StorageUtil.setVocItem(add[i]);
-			}
-
-			$("#importStatus").text("Import successful!");
-
-			$("#importForm")[0].reset();
-			$("#importArea").text("");
-
-		}
-		catch (e) {
-			$("#importStatus").text("Parsing Error!");
-			debugging&&console.log(e);
-		}
-
-	}
-	else {
-		$("#importStatus").text("Nothing to import :( Please paste your stuff first");
-	}
-});
-
-$("#ImportCloseBtn").click(function () {
-	$("#import").hide();
-	$("#importForm")[0].reset();
-	$("#importArea").text("");
-	$("#importStatus").text('Ready to import..');
-});
 
 /*
 *  Review Items
@@ -1704,75 +1733,6 @@ window.WKSS_review = function () {
 		startReview();
 	}
 };
-
-$("body").append('                                                          \
-<div id="selfstudy" class="WKSS">\
-<button id="SelfstudyCloseBtn" class="wkss-close" type="button"><i class="icon-remove"></i></button>\
-<h1>Review<span id="RevNum"></span></h1>\
-<div id="wkss-kanji">\
-<span id="rev-kanji"></span>\
-</div><div id="wkss-type">\
-<span id="rev-type"></span><br />\
-</div><div id="wkss-solution">\
-<span id="rev-solution"></span>\
-</div><div id="wkss-input">\
-<input type="text" id="rev-input" size="40" placeholder="">\
-</div><span id="rev-index" style="display: block;"></span>\
-\
-<form id="audio-form">\
-<label id="AudioButton" class="button">Play audio</label>\
-<label id="WrapUpBtn"   class="button">Wrap Up</label>\
-</form>\
-<div id="rev-audio" style="display:none;"></div>\
-</div>');
-$("#selfstudy").hide();
-
-$("#SelfstudyCloseBtn").click(function () {
-	$("#selfstudy").hide();
-	$("#rev-input").val("");
-	reviewActive = false;
-});
-
-$("#WrapUpBtn").click(function() {
-	var sessionList = sessionGet('User-Review')||[];
-	var statsList = sessionGet('User-Stats')||[];
-	//if an index in sessionList matches one in statsList, don't delete
-	var sessionI = sessionList.length;
-	var item = sessionGet('WKSS-item')||[];
-	var arr2 = [];
-	//for every item in sessionList, look for index in statsList,
-	//if not there (-1) delete item from sessionList
-	while (sessionI--){
-		var index = findIndex(statsList,sessionList[sessionI]);
-		if ((Math.sign(1/index) !== -1)||(sessionList[sessionI].index == item.index)){
-
-			arr2.push(sessionList[sessionI]);
-		}
-	}
-
-
-	debugging&&console.log(arr2);
-	sessionSet('User-Review', JSON.stringify(arr2));
-});
-
-$("#AudioButton").click(function () {
-	openInNewTab(document.getElementById('rev-audio').innerHTML);
-});
-
-$("body").append('                                                          \
-<div id="resultwindow" class="WKSS">                                    \
-<button id="ReviewresultsCloseBtn" class="wkss-close" type="button"><i class="icon-remove"></i></button>\
-<h1>Review Results</h1>\
-<h2>All</h2>\
-<div id="stats-a"></div>\
-</div>');
-
-$("#resultwindow").hide();
-
-$("#ReviewresultsCloseBtn").click(function () {
-	$("#resultwindow").hide();
-	document.getElementById("stats-a").innerHTML = "";
-});
 
 //declare global values for keyup event
 //is an answer being submitted?
@@ -1953,39 +1913,7 @@ $("#rev-input").keyup(function (e) {
             generateReviewList(reviewActive);
         }
     };
-	/**  Add Item: event function to open "add window" and close any other window that might be open at the time.
-	*/
-    window.WKSS_add = function () {
-        //show the add window
-        $("#add").show();
-        //hide other windows
-        $("#export").hide();
-        $("#import").hide();
-        $("#edit").hide();
-        $("#selfstudy").hide();
-    };
 	
-	var addElement = require('./addelement.js');
-	//add html to page source
-    $("body").append(addElement);
-    //hide add window ("div add" code that was just appended)
-    $("#add").hide();
-
-    var handleAddClick = require('./handleAddClick.js');
-	
-    //function to fire on click event for "Add new Item"
-    $("#AddItemBtn").click(function () {
-        handleAddClick();
-    });
-
-    $("#AddCloseBtn").click(function () {
-        $("#add").hide();
-        $("#addForm")[0].reset();
-        $("#addStatus").text('Ready to add..');
-        $("#addKanji").removeClass("error");
-        $("#addMeaning").removeClass("error");
-    });
-
     /** Keeps legacy srsList updated.
 	* @depreciate
 	* @param {SrsItem} srsitem
@@ -2015,405 +1943,177 @@ $("#rev-input").keyup(function (e) {
     var checkForDuplicates = function(list, item){
 		return list.some(function(a){return a.kanji === item.kanji;});
 	};
-
-	/** Creates a lookup array for each kanji with its srs level. Used for displaying component levels.
-	* @param item
-	* @param kanjilist
-	* @returns An array of the kanji with SRS values for each kanji component.
-	* @example
-        eg. 折り紙:
-        compSRS = [{"kanji": "折", "srs": "guru"}, {"kanji": "紙", "srs": "apprentice"}]
-	*/
-    var getCompKanji = function(item, kanjiList){
-        if (!kanjiList){
-            kanjiList = [];
-        }
-        debugging&&console.log("getCompKanji(item, kanjiList)");
-
-        var compSRS = [];
-        var kanjiReady = false; //indicates if the kanjiList has been populated
-        var userGuppy = false; //indicates if kanjiList has less than 100 items
-        var kanjiObj = {};
-
-        //has the server responded yet
-        if (kanjiList.length > 0){
-            debugging&&console.log("kanjiList is > 0");
-            kanjiReady = true;
-
-            //create lookup object
-            for (var k=0;k<kanjiList.length;k++){
-                kanjiObj[kanjiList[k].character] = kanjiList[k];
-            }
-
-            //is there less than 100 kanji in the response
-            if (kanjiList.length < 100){
-                debugging&&console.log("kanjiList is < 100");
-                userGuppy = true;
-            }
-        }    
-
-        var components = item.components;
-        //for each kanji character component
-        //    this is the outer loop since there will be far less of them than kanjiList
-        for(var i = 0; i < components.length; i++){
-
-            var matched = false;
-            //for each kanji returned by the server
-            // for(var j=0; j<kanjiList.length; j++){
-
-            //if the kanji returned by the server matches the character in the item
-            if (typeof kanjiObj[components[i]] !== 'undefined'){
-                //      if (kanjiList[j].character == components[i]){
-                compSRS[i] = {"kanji": components[i], "srs": kanjiObj[components[i]].srs};
-                matched = true;
-
-                // break; //kanji found: 'i' is its position in item components; 'j' is its postion in the 'kanjiList' server response
-            }
-            // }
-
-            if (matched === false){ // character got all the way through kanjiList without a match.
-                if (kanjiReady){ //was there a server response?
-                    if (userGuppy){ //is the user a guppy (kanji probably matches a turtles response)
-                        debugging&&console.log("matched=false, kanjiList.length: "+kanjiList.length);
-                        compSRS[i] = {"kanji": components[i], "srs": "noMatchGuppy"};
-                    }
-					else{ //user is a turtle, kanji must not have been added to WK (yet)
-                        debugging&&console.log("matched=false, kanjiList.length: "+kanjiList.length);
-                        compSRS[i] = {"kanji": components[i], "srs": "noMatchWK"};
-                    }
-                }
-				else{
-                    debugging&&console.log("matched=false, kanjiReady=false, noServerResp");
-                    compSRS[i] = {"kanji": components[i], "srs": "noServerResp"};
-                }
-            }
-        }
-        return compSRS;
-    };
-
-
-    var isKanjiLocked = function(srsitem, kanjiList, locksOn){
-        //item unlocked by default
-        //may have no kanji, only unlocked kanji will get through the code unflagged
-
-		// Enumeration "yes", "no", "DB"
-        var locked = "no";
-        if (locksOn){
-            //get the kanji characters in the word.
-            var componentList = getCompKanji(srsitem, kanjiList);
-            // eg: componentList = getCompKanji("折り紙", kanjiList);
-            // componentList = [{"kanji": "折", "srs": "guru"}, {"kanji": "紙", "srs": "apprentice"}]
-
-
-            var c = componentList.length;
-            while(c--){
-                //look for locked kanji in list
-                if (componentList[c].srs == "apprentice" ||
-                    componentList[c].srs == "noServerResp"||
-                    componentList[c].srs == "unreached"
-                   ){
-
-                    //----could be apprentice etc.
-                    //Simple: lock is 'yes'
-                    locked = "yes";
-                    // "yes":	item will be locked while there is no database connection.
-                    //			if the server response indicates that it has been unlocked, only then will it be available for review
-
-                    debugging&&console.log("test srs for apprentice etc. 'locked': "+ locked);
-
-                    debugging&&console.log(componentList[c].kanji +": "+componentList[c].srs +" -> "+ locked);
-
-                    break; // as soon as one kanji is locked, the whole item is locked
-                }
-
-                //DB locks get special state
-                if (componentList[c].srs == "noMatchWK" || componentList[c].srs == "noMatchGuppy"){
-
-                    locked = "DB";
-                    //"DB"	: database limitations, one of two things
-                    //a. the kanji isn't in the database and the user is a guppy --could change if user subscribes or first two levels change/expand
-                    //b. the kanji isn't in the database and the user is a turtle --could change if more kanji added.
-
-                    debugging&&console.log("test srs for unmatched kanji. 'locked': "+ locked);
-
-                    debugging&&console.log(componentList[c].kanji +": "+componentList[c].srs +" -> "+ locked);
-
-
-                }
-
-            } //for char in componentList
-            debugging&&console.log("out of character loop");
-        }
-        //locked will be either "yes","no", or "DB"
-        return [locked];
-    };
-
-    /** Gets the Kanji characters in a given string.
-	* @param {string} vocabString -
-	* @return {Array.<string>} An array of the kanji components in the given string
-	*/
-    var getComponents = function(vocabString){
-        return Array.prototype.filter.call(vocabString, function(ch){
-            return /^[\u4e00-\u9faf]+$/.test(ch);
-        }, this);
-    };
-
-    /** Manages the locked and manualLock properties of srsitem. This is to stop items being locked again after they have been unlocked if any of the kanji used falls below the unlock threshold (eg. if the 勉 in 勉強 falls back to apprentice, we do not want to lock up 勉強 again.)
-	* @param {Object} item
-	* @param {string} item.locked - (String enumeration) A real time evaluation of the item (is any of the kanji in the word locked?)
-	* @param {string} item.manualLock - (String enumeration) Will return 'no' if .locked has ever returned 'no'.
-	* @returns {ITask} item
-	*/
-    var setLocks = function(item){
-        //once manualLock is "no" it stays "no"
-        if (item.manualLock !== false && item.manualLock !== "no" && item.manualLock !== "n"){
-
-            var kanjiList = localGet('User-KanjiList')||[];
-
-            item.components = getComponents(item.kanji);
-
-            var kanjiLockedResult = isKanjiLocked(item, kanjiList, locksOn);
-            item.locked = kanjiLockedResult[0];
-
-            item.manualLock = item.locked;
-        }else{
-            item.manualLock = false;
-        }
-
-        debugging&&console.log("setting locks for "+ item.kanji +": locked: "+item.locked+", manualLock: "+ item.manualLock);
-
-        return item;
-    };
-    /** Converts number of milliseconds into a readable string
-	* @param {number} milliseconds - The number of milliseconds to approximate
-	* @returns {string} Readable time frame ('2 months', '3 hours', '1 week' etc).
-	*/
-	var ms2str = function(milliseconds){
-        var num; //number of months weeks hours etc
-        //more time has elapsed than required for the level
-        if(milliseconds <= 0) {
-            return "Now" ;
-        }
-        if(milliseconds > 2628000000) {//About a month
-            num = Math.floor(milliseconds/2628000000).toString()+" month";
-            if (num !== "1 month"){
-                return num+"s";
-            }else{
-                return num;
-            }
-        }
-        if(milliseconds > 604800000) {//A week
-            num = Math.floor(milliseconds/604800000).toString()+" week";
-            if (num !== "1 week"){
-                return num+"s";
-            }else{
-                return num;
-            }
-        }
-        if(milliseconds > 86400000) {//A day
-            num = Math.floor(milliseconds/86400000).toString()+" day";
-            if (num !== "1 day"){
-                return num+"s";
-            }else{
-                return num;
-            }
-        }
-        if(milliseconds > 3600000) {//An hour
-            num = Math.floor(milliseconds/3600000).toString()+" hour";
-            if (num !== "1 hour"){
-                return num+"s";
-            }else{
-                return num;
-            }
-        }
-        if(milliseconds > 60000) {//A minute
-            num = Math.floor(milliseconds/60000).toString()+" minute";
-            if (num !== "1 minute"){
-                return num+"s";
-            }else{
-                return num;
-            }
-        }
-        if(milliseconds > 0) {//A second is 1000, but need to return something for less than one too
-            num = Math.floor(milliseconds/1000).toString()+" second";
-            if (num !== "1 second"){
-                return num+"s";
-            }else{
-                return num;
-            }
-        }
-    };
-    /** Retrieves values from storage to populate 'editItems' menu
-	*/
-    var generateEditOptions = function() {
-        var select = document.getElementById('editWindow');
-        //clear the editWindow
-        while (select.firstChild) {
-            select.removeChild(select.firstChild);
-        }
-        //check for items to add
-        if (localStorage.getItem('User-Vocab')) {
-
-            //retrieve from local storage
-            var vocabList = StorageUtil.getVocList();
-            var srslist =  StorageUtil.getVocList();
-            var options = [];
-            //build option string
-            //var i = vocabList.length;
-            //while (i--){
-			vocabList.forEach(function(task){
-                //form element to save string
-                var opt = document.createElement('option');
-
-                //dynamic components of string
-
-                //when is this item up for review
-                var due = task.due||task.date + srsObject[task.level].duration;
-                var review = "";
-
-                //no future reviews if burned
-                if(task.level >= 9) {
-                    review = "Never";
-                }
-
-                //calculate next relative review time
-                //current timestamp is past due date.
-                else if(Date.now() >= due) {
-                    review = "Now" ;
-                }
-                else {
-                    review = ms2str(due - Date.now());
-                }//end if review is not 'never' or 'now'
-
-                var text = task.kanji + " & " +
-                    task.reading + " & " +
-                    task.meaning + " (" +
-					srsObject[task.level].rank +
-					" - Review: " +
-                    review + ") Locked: " +
-                    task.manualLock;
-
-                opt.value = i;
-                opt.innerHTML = text;
-                options.push(opt);//for future use (sorting data etc)
-                select.appendChild(opt);//export item to option menu
-            }, this);
-        }
-    };
-    /** Edit Items
-	*/
-    window.WKSS_edit = function () {
-        generateEditOptions();
-        $("#edit").show();
-        //hide other windows
-        $("#export").hide();
-        $("#import").hide();
-        $("#add").hide();
-        $("#selfstudy").hide();
-    };
 	var buildNode = require('./buildnode.js');
 
 	var buildWindow = require('./buildwindow.js');
-	
-	/*var addEditWindow = function() {
-		var editWindow = buildNode('div', {id: "WKSS-edit", className: "WKSS"});
-		var editForm = buildNode('form', {id: "WKSS-editForm"});
-		editWindow.appendChild(editForm);
-		var editCloseButton = buildNode('button', {id: "WKSS-editCloseBtn", className: "WKSS-close"});
-		editForm.appendChild(editCloseButton);
-		
-		editCloseButton.appendChild(buildNode('i', {className: "icon-remove"}));
-		var h1Element = buildNode('h1');
-		editForm.appendChild(h1Element);
-		h1Element.appendChild(document.createTextNode("Edit your Vocab"));
-		var selectElement = buildNode('select', {id: "editWindow", size: "8"});
-		editForm.appendChild(selectElement);
-		var editItemText = buildNode('input', {type: "text" id: "editItem" name: "" size: "40" placeholder: "Select vocab, click edit, change and save!"});
-		editForm.appendChild(editItemText);
-		var editStatus = buildNode('p', {id: "editStatus"});
-		editForm.appendChild(editStatus);
-		editStatus.appendChild(document.createTextNode("Ready to edit.."));
-		
-		var editButton = buildNode('button', {id: "EditEditBtn", type: "button"});
-		editForm.appendChild(editButton);
-		editButton.appendChild(document.createTextNode("Edit"));
-		var editSave = buildNode('button', {id: "EditSaveBtn", type: "button"});
-		editForm.appendChild(editSave);
-		editSave.appendChild(document.createTextNode("Save"));
-		var editDelete = buildNode('button', {id: "EditDeleteBtn", type: "button", title: "Delete selected item"});
-		editForm.appendChild(editDelete);
-		editDelete.appendChild(document.createTextNode("Delete"));
-		var editDeleteAll = buildNode('button', {id: "EditDeleteAllBtn", type: "button", title: "本当にやるの？"});
-		editForm.appendChild(editDeleteAll);
-		editDeleteAll.appendChild(document.createTextNode("Delete All"));
-		var editResetLevels = buildNode('button', {id: "ResetLevelsBtn", type: "button"});
-		editForm.appendChild(editResetLevels);
-		editResetLevels.appendChild(document.createTextNode("Reset levels"));
-		
-		return editWindow;
-	};
-	*/
-	var editWindowStructure = {
-	id: "WKSS-edit",
-	className: "WKSS",
-	childNodes:[{
-		tag: 'form',
-		id: "WKSS-editForm",
-		childNodes:[{
-			tag: 'button',
-			id: "WKSS-editCloseBtn",
-			className: "WKSS-close",
-			childNodes:[{
-				tag: 'i',
-				className: "icon-remove"
-			}]
-		},{
-			tag: 'h1',
-			childNodes:["Edit your Vocab"]
-		},{
-			tag: 'select',
-			id: "editWindow",
-			other: {size: "8"}
-		},{
-			tag: 'input', 
-			other:{
-				type: "text",
-				name: "",
-				size: "40",
-				placeholder: "Select vocab, click edit, change and save!"
+
+	var userWindowStructure = {
+		id: "WKSS-user",
+		className: "WKSS",
+		childNodes: [{tag: 'form',
+			id: "userForm",
+			childNodes: [{ tag: 'button',
+				id: "UserCloseBtn",
+				className: "wkss-close",
+				other: {type: "reset"},
+				childNodes: [{tag: 'i', 
+					className: "icon-remove"
+				}]
 			},
-			id: "editItem"
-		},{
-			tag: 'p', 
-			id: "editStatus",
-			childNodes:["Ready to edit..."]
-		},{
-			tag: 'button',
-			id: "EditEditBtn",
-			other: {type: "button"},
-			childNodes:["Edit"]
-		},{
-			tag: 'button',
-			id: "EditSaveBtn",
-			other:{type: "button"},
-			childNodes:["Save"]
-		},{
-			tag: 'button',
-			id: "EditDeleteBtn",
-			other: {type: "button", title: "Delete selected item"},
-			childNodes:["Delete"]
-		},{
-			tag: 'button',
-			id: "EditDeleteAllBtn",
-			other: {type: "button", title: "本当にやるの？"},
-			childNodes:["Delete All"]
-		},{
-			tag: 'button',
-			id: "ResetLevelsBtn",
-			other: {type: "button"},
-			childNodes:["Reset levels"]
+			{ tag:'h1',
+				childNodes: ["User Settings"]
+			},
+			{ tag: 'input', 
+				id: "userApi", 
+				other: {type: "text", placeholder: "Enter API Key"}
+			},
+			{ tag: 'p',
+				childNodes:[
+					{ tag: 'b',
+						childNodes: ["Username: "]
+					},
+					{ tag: 'span',
+						id: "WKSS-username",
+					}
+				]
+			},
+			{ tag: 'button',
+				id: "AutofillUserBtn",
+				other: {type: "button", title: "Use the details of the current login"},
+				childNodes: ["Autofill"]
+			},
+			{ tag: 'button',
+				id: "saveUserBtn",
+				other: {type: "button"},
+				childNodes: ["Save User Details"]
+			}]
 		}]
-	}]
+	};
+    var userWindow = buildWindow(userWindowStructure);
+	$("body").append(userWindow);
+	$("#WKSS-user").hide();
+	$("#AutofillUserBtn").click(function(evt){
+		console.info(user.loggedInUser);
+		$("#userApi").val(user.loggedInUser._api);
+		StorageUtil.saveUserApi(user.loggedInUser._api);
+		$("#WKSS-username").append(user.loggedInUser.getUsername());
+	});
+	
+	var addWindowStructure = {
+		id: "WKSS-add",
+		className: "WKSS",
+		childNodes: [{tag: 'form',
+			id: "addForm",
+			childNodes: [{ tag: 'button',
+				id: "AddCloseBtn",
+				className: "wkss-close",
+				other: {type: "reset"},
+				childNodes: [{tag: 'i', 
+					className: "icon-remove"
+				}]
+			},
+			{ tag:'h1',
+				childNodes: ["Add a new Item"]
+			},
+			{ tag: 'input', 
+				id: "addKanji", 
+				other: {type: "text", placeholder: "Enter 漢字, ひらがな or カタカナ"}
+			},
+			{ tag: 'input',
+				id: "addReading",
+				other: {type: "text", title: "Leave empty to add vocabulary like する (to do)", placeholder: "Enter reading"}
+			},
+			{ tag: 'input',
+				id: "addMeaning",
+				other: {type: "text", placeholder: "Enter meaning"}
+			},
+			{ tag: 'p',
+				id: "addStatus",
+				childNodes: ["Ready to add..."]
+			},
+			{ tag: 'button',
+				id: "AddItemBtn",
+				other: {type: "button"},
+				childNodes: ["Add new Item"]
+			}]
+		}]
+	};
+    var addAddWindow = buildWindow(addWindowStructure);
+	$("body").append(addAddWindow);
+    $("#WKSS-add").hide();
+
+	//function to fire on click event for "Add new Item"
+	$("#AddItemBtn").click(handleAddClick);
+
+	$("#AddCloseBtn").click(function () {
+		$("#WKSS-add").hide();
+		$("#addForm")[0].reset();
+		$("#addStatus").text('Ready to add..');
+		$("#addKanji").removeClass("error");
+		$("#addMeaning").removeClass("error");
+	});
+
+	var editWindowStructure = {
+		id: "WKSS-edit",
+		className: "WKSS",
+		childNodes:[{
+			tag: 'form',
+			id: "WKSS-editForm",
+			childNodes:[{
+				tag: 'button',
+				id: "WKSS-editCloseBtn",
+				className: "wkss-close",
+				childNodes:[{
+					tag: 'i',
+					className: "icon-remove"
+				}]
+			},{
+				tag: 'h1',
+				childNodes:["Edit your Vocab"]
+			},{
+				tag: 'select',
+				id: "editWindow",
+				other: {size: "8"}
+			},{
+				tag: 'input', 
+				other:{
+					type: "text",
+					name: "",
+					size: "40",
+					placeholder: "Select vocab, click edit, change and save!"
+				},
+				id: "editItem"
+			},{
+				tag: 'p', 
+				id: "editStatus",
+				childNodes:["Ready to edit..."]
+			},{
+				tag: 'button',
+				id: "EditEditBtn",
+				other: {type: "button"},
+				childNodes:["Edit"]
+			},{
+				tag: 'button',
+				id: "EditSaveBtn",
+				other:{type: "button"},
+				childNodes:["Save"]
+			},{
+				tag: 'button',
+				id: "EditDeleteBtn",
+				other: {type: "button", title: "Delete selected item"},
+				childNodes:["Delete"]
+			},{
+				tag: 'button',
+				id: "EditDeleteAllBtn",
+				other: {type: "button", title: "本当にやるの？"},
+				childNodes:["Delete All"]
+			},{
+				tag: 'button',
+				id: "ResetLevelsBtn",
+				other: {type: "button"},
+				childNodes:["Reset levels"]
+			}]
+		}]
 };
 
     var addEditWindow = buildWindow(editWindowStructure);
@@ -2493,9 +2193,9 @@ $("#rev-input").keyup(function (e) {
 
                     fullList = fullList.reverse(); //reset order of array
 
-                    localSet('User-Vocab', fullList);
+                    StorageUtil.localSet('User-Vocab', fullList);
 
-                    generateEditOptions();
+                    editWindowInst.generateEditOptions();
                     $("#editStatus").html('Saved changes!');
                     document.getElementById("editItem").value = "";
                     document.getElementById("editItem").name = "";
@@ -2512,7 +2212,7 @@ $("#rev-input").keyup(function (e) {
     });
 
     var updateEditGUI = function(){
-        generateEditOptions();
+        editWindowInst.generateEditOptions();
         document.getElementById("editItem").value = "";
         document.getElementById("editItem").name = "";
     };
@@ -2535,7 +2235,7 @@ $("#rev-input").keyup(function (e) {
 
         //yuck
         if (vocabList.length !== 0) {
-            localSet('User-Vocab', vocabList);
+            StorageUtil.localSet('User-Vocab', vocabList);
         }
         else {
             localStorage.removeItem('User-Vocab');
@@ -2558,8 +2258,8 @@ $("#rev-input").keyup(function (e) {
     };
     $("#EditDeleteAllBtn").click(editDeleteAll);
 
-    $("#EditCloseBtn").click(function () {
-        $("#edit").hide();
+    $("#WKSS-editCloseBtn").click(function () {
+        $("#WKSS-edit").hide();
         $("#editForm")[0].reset();
         $("#editStatus").text('Ready to edit..');
     });
@@ -2582,10 +2282,9 @@ $("#rev-input").keyup(function (e) {
 			tag: 'form',
 			id: "WKSS-exportForm",
 			childNodes:[
-				{
-					tag: 'button',
+				{ tag: 'button',
 					id: "WKSS-exportCloseBtn",
-					className: "WKSS-close",
+					className: "wkss-close",
 					childNodes:[{
 						tag: 'i',
 						className: "icon-remove"
@@ -2729,7 +2428,7 @@ $("#rev-input").keyup(function (e) {
 				{
 					tag: 'button',
 					id: "WKSS-importCloseBtn",
-					className: "WKSS-close",
+					className: "wkss-close",
 					childNodes:[{
 						tag: 'i',
 						className: "icon-remove"
@@ -2791,7 +2490,7 @@ $("#rev-input").keyup(function (e) {
 	var importWindow = buildWindow(importWindowStructure);
 
     $("body").append(importWindow);
-   $("#import").hide();
+   $("#WKSS-import").hide();
 
 	var checkAdd = function(add) {
         //take a JSON object (parsed from import window) and check with stored items for any duplicates
@@ -2811,9 +2510,11 @@ $("#rev-input").keyup(function (e) {
 
     document.getElementById("upload") && document.getElementById("upload").addEventListener('change', ImportUtil.fileUpload, false);
 
+	$("#ImportCsvBtn").click(function () {
+	});
     
     $("#ImportWKBtn").click(function(){
-        WanikaniUtil.getServerResp(APIkey,"vocabulary");
+        WanikaniUtil.getServerResp(APIkey,"vocabulary", SettingsUtil.onStateChangeHandler);
         debugging&&console.log("maybe?");
     });
 
@@ -2995,30 +2696,91 @@ $("#rev-input").keyup(function (e) {
         }
     };
 
-    $("body").append('                                                          \
-<div id="selfstudy" class="WKSS">\
-<button id="SelfstudyCloseBtn" class="wkss-close" type="button"><i class="icon-remove"></i></button>\
-<h1>Review<span id="RevNum"></span></h1>\
-<div id="wkss-kanji">\
-<span id="rev-kanji"></span>\
-</div><div id="wkss-type">\
-<span id="rev-type"></span><br />\
-</div><div id="wkss-solution">\
-<span id="rev-solution"></span>\
-</div><div id="wkss-input">\
-<input type="text" id="rev-input" size="40" placeholder="">\
-</div><span id="rev-index" style="display: block;"></span>\
-\
-<form id="audio-form">\
-<label id="AudioButton" class="button">Play audio</label>\
-<label id="WrapUpBtn"   class="button">Wrap Up</label>\
-</form>\
-<div id="rev-audio" style="display:none;"></div>\
-</div>');
-    $("#selfstudy").hide();
+ 	var selfStudyWindowStructure = {
+		id: "WKSS-selfstudy",
+		className: "WKSS",
+		childNodes:[
+			{ tag: 'button',
+				id: "WKSS-SelfstudyCloseBtn",
+				className: "wkss-close",
+			childNodes:[{
+					tag: 'i',
+					className: "icon-remove"
+				}]
+			},
+			{ tag: 'h1',
+				childNodes:["Review",
+					{ tag: 'span',
+						id: "RevNum"
+					}
+				]
+			},
+			{ tag: 'div',
+				id: "wkss-kanji",
+				childNodes:[
+					{ tag: 'span',
+						id: "rev-kanji"
+					}
+				]
+			},
+			{ tag: 'div',
+				id: "wkss-type",
+				childNodes:[
+					{ tag: 'span',
+						id: "rev-type"
+					}
+				]
+			},
+			{ tag: 'div',
+				id: "wkss-solution",
+				childNodes:[
+					{ tag: 'span',
+						id: "rev-solution"
+					}
+				]
+			},
+			{ tag: 'div',
+				id: "wkss-input",
+				childNodes:[
+					{ tag: 'span',
+						id: "rev-input"
+					}
+				]
+			},
+			{ tag: 'span',
+				id: "rev-index",
+				other: { style: "display: block;"}
+			},
+			{ tag: 'form',
+				id: "audio-form",
+				childNodes: [
+					{ tag: 'label',
+						id: "AudioButton",
+						className: "button",
+						other: {type: "button", style: "display:inline;"},
+						childNodes:["Play Audio"]
+					},
+					{ tag: 'label',
+						id: "WrapUpBtn",
+						className: "button",
+						other: {style:"display:inline; cursor: pointer;"},
+						childNodes:["Wrap Up"]
+					}
+				]
+			},
+			{ tag: 'div',
+				id: "rev-audio",
+				other: {style: "display: none;"}
+			}
+		]
+	};
+	var selfStudyWindow = buildWindow(selfStudyWindowStructure);
 
-    $("#SelfstudyCloseBtn").click(function () {
-        $("#selfstudy").hide();
+    $("body").append(selfStudyWindow);
+    $("#WKSS-selfstudy").hide();
+
+    $("#WKSS-SelfstudyCloseBtn").click(function () {
+        $("#WKSS-selfstudy").hide();
         $("#rev-input").val("");
         reviewActive = false;
     });
@@ -3128,7 +2890,7 @@ $("#rev-input").keyup(function (e) {
             }
             voclist[stats.index].date = now;
             voclist[stats.index].due = now + srsObject[voclist[stats.index].level].duration;
-            console.log("Next review in "+ms2str(srsObject[voclist[stats.index].level].duration));
+            console.log("Next review in "+ObjectUtil.ms2str(srsObject[voclist[stats.index].level].duration));
 
             return voclist;
         }
@@ -3175,20 +2937,38 @@ $("#rev-input").keyup(function (e) {
 
         }, this);
         sessionSet("User-Stats",statsList);
-        localSet("User-Vocab", voclist);
+        StorageUtil.localSet("User-Vocab", voclist);
     };
 
-    $("body").append('                                                          \
-<div id="resultwindow" class="WKSS">                                    \
-<button id="ReviewresultsCloseBtn" class="wkss-close" type="button"><i class="icon-remove"></i></button>\
-<h1>Review Results</h1>\
-<h2>All</h2>\
-<div id="stats-a"></div>\
-</div>');
+	var resultWindowStructure = {
+		id: "WKSS-resultwindow",
+		className: "WKSS",
+		childNodes: [
+			{ tag: 'button',
+				id: "WKSS-ReviewresultsCloseBtn",
+				className: "wkss-close",
+			childNodes:[{
+					tag: 'i',
+					className: "icon-remove"
+				}]
+			},
+			{ tag: 'h1',
+				childNodes:["Review Results"]
+			},
+			{ tag: 'h2',
+				childNodes:["All"]
+			},
+			{ tag: 'div',
+				id: "stats-a"
+			}
+		]
+	};
+	var resultWindow = buildWindow(resultWindowStructure);
+    $("body").append(resultWindow);
 
-    $("#resultwindow").hide();
+    $("#WKSS-resultwindow").hide();
 
-    $("#ReviewresultsCloseBtn").click(function () {
+    $("#WKSS-ReviewresultsCloseBtn").click(function () {
         $("#resultwindow").hide();
         document.getElementById("stats-a").innerHTML = "";
     });
@@ -3286,7 +3066,7 @@ $("#rev-input").keyup(function (e) {
 
 	
     //jquery keyup event
-    $("#rev-input").keyup(ReviewUtil.submitResponse);
+    $("#rev-input").keyup(MarkingUtil.submitResponse);
 
 
 
@@ -3307,24 +3087,10 @@ $("#rev-input").keyup(function (e) {
     /**  Prepares the script
 	*/
     var scriptInit = function() {
-        debugging&&console.log("scriptInit()");
         //functions:
         //    addUserVocabButton()
         //    logError(err)
-
-        debugging&&console.log("Initializing Wanikani UserVocab Script!");
-
-        gM_addStyle(".custom .dropdown-menu {background-color: #DBA901 !important;}");
-        gM_addStyle(".custom .dropdown-menu:after {border-bottom-color: #DBA901 !important;");
-        gM_addStyle(".custom .dropdown-menu:before {border-bottom-color: #DBA901 !important;");
-        gM_addStyle(".open .dropdown-toggle.custom {background-color: #FFC400 !important;}");
-        gM_addStyle(".custom .dropdown-menu a:hover {background-color: #A67F00 !important;}");
-        gM_addStyle(".custom:hover {color: #FFC400 !important;}");
-        gM_addStyle(".custom:hover span {border-color: #FFC400 !important;}");
-        gM_addStyle(".custom:focus {color: #FFC400 !important;}");
-        gM_addStyle(".custom:focus span {border-color: #FFC400 !important;}");
-        gM_addStyle(".open .custom span {border-color: #FFFFFF !important;}");
-        gM_addStyle(".open .custom {color: #FFFFFF !important}");
+		console.log("Initializing Wanikani UserVocab Script!");
 
 		var wkStyleCSS = require('./wkstyle.js');
         gM_addStyle(wkStyleCSS);
@@ -3334,9 +3100,7 @@ $("#rev-input").keyup(function (e) {
                 WanikaniDomUtil.addUserVocabButton();
 
                 //provide warning to users trying to use the (incomplete) script.
-                debugging&&console.log("this script is still incomplete: \n\
-It is provided as is without warranty express or implied\n\
-in the hope that you may find it useful.");
+                debugging&&console.log("this script is still incomplete: \r\nIt is provided as is without warranty express or implied\r\nin the hope that you may find it useful.");
             }
             else {
                 debugging&&console.log("Wanikani Self-Study: Your browser does not support localStorage.. Sorry :(");
@@ -3364,13 +3128,14 @@ in the hope that you may find it useful.");
     var usingHTTPS = /^https:/.test(window.location.href);
     console.info(usingHTTPS, window.location.href);
     if (usingHTTPS){
-        if (!noNewStuff){  //Don't waste time if user is browsing site
-            WanikaniUtil.getServerResp(APIkey);
-        }else{
-            debugging&&console.log("User is unlikely to have new kanji unlocked");
+        console.info("WaniKani Self-Study Plus is about to start");
+		if (noNewStuff){  //Don't waste time if user is browsing site
+			console.log("User is unlikely to have new kanji unlocked");
         }
-        debugging&&console.info("WaniKani Self-Study Plus is about to start");
-
+		else{
+			WanikaniUtil.getServerResp(APIkey, 'kanji', SettingsUtil.onStateChangeHandler);
+        }
+        
         scriptInit();
 
     }else{
@@ -3385,7 +3150,38 @@ if (document.readyState === 'complete'){
     window.addEventListener("load", main, false);
 }
 
-},{"./addelement.js":1,"./buildnode.js":2,"./buildwindow.js":3,"./handleAddClick.js":4,"./importutil.js":6,"./objectutil.js":7,"./reviewutil.js":8,"./storageutil.js":9,"./wanikanidomutil.js":11,"./wanikaniutil.js":12,"./wkstyle.js":14}],11:[function(require,module,exports){
+},{"./buildnode.js":1,"./buildwindow.js":2,"./editwindow.js":3,"./handleAddClick.js":4,"./importutil.js":6,"./markingutil.js":7,"./objectutil.js":8,"./serverutil":9,"./setreviewsutil.js":10,"./settingsutil.js":11,"./storageutil.js":12,"./userclass.js":14,"./wanikanidomutil.js":15,"./wanikaniutil.js":16,"./wkstyle.js":18}],14:[function(require,module,exports){
+var ServerUtil = require('./serverutil.js');
+var ObjectUtil = require('./objectutil.js');
+
+var User = function(APIkey){
+	this._api = APIkey;
+	var xhrk = ServerUtil.createCORSRequest("get", "https://www.wanikani.com/api/user/" + APIkey + "/user-information");
+	if (!ObjectUtil.isEmpty(xhrk)){
+		xhrk.onreadystatechange = function() {
+			if (xhrk.readyState == 4){
+				console.info("are there arguments passed to onreadystatechange? ", arguments);
+				var resp = JSON.parse(xhrk.responseText);
+				for (var key in resp.user_information){
+					this[key] = resp.user_information[key];
+				}
+			}
+		}.bind(this);
+		xhrk.send();
+	}
+};
+
+User.prototype = {
+	getApi: function() {
+		return this._api;
+	},
+	getUsername: function() {
+		return this.username;
+	}
+};
+
+module.exports = User;
+},{"./objectutil.js":8,"./serverutil.js":9}],15:[function(require,module,exports){
 /** Deals specifically with the DOM of Wanikani.com, unlike {@link WanikaniUtil} which deals primarily with the API and application side.
 */
 var WanikaniDomUtil = {
@@ -3430,7 +3226,7 @@ var WanikaniDomUtil = {
 				className: "dropdown custom",
 				id: "customDropdown",
 				other: {
-					"data-dropdown": null
+					"data-dropdown": ""
 				},
 				childNodes: [{
 					tag: 'a',
@@ -3464,7 +3260,8 @@ var WanikaniDomUtil = {
 						childNodes: [{
 							tag: 'a',
 							id: "click",
-							other: {href: "#",
+							other: {
+								style: "cursor: pointer;",
 								onclick: "WKSS_add();"
 							},
 							childNodes: ["Add"]
@@ -3532,39 +3329,26 @@ var WanikaniDomUtil = {
 };
 
 module.exports = WanikaniDomUtil;
-},{"./buildwindow.js":3}],12:[function(require,module,exports){
+},{"./buildwindow.js":2}],16:[function(require,module,exports){
 var ObjectUtil = require('./objectutil.js');
 var StorageUtil = require('./storageutil.js');
+var ServerUtil = require('./serverutil.js');
+var SetReviewsUtil = require('./setreviewsutil.js');
 /** Utilities for interaction with the Wanikani API and general website.
 */
 var WanikaniUtil = {
 	hijackRequests: require('./hijackrequests.js'),
-	createCORSRequest: function(method, url){
-        var xhr = new XMLHttpRequest();
-        if ("withCredentials" in xhr){
-            xhr.open(method, url, true);
-        }
-		else if (typeof XDomainRequest !== "undefined"){
-            xhr = new XDomainRequest();
-            xhr.open(method, url);
-        }
-		else {
-            xhr = null;
-        }
-        return xhr;
-    },
 	/** Gets the user information using the Wanikani API and stores them directly into browser storage.
 	* @param
-	* @param
+	* @param {string} [requestedItem = 'kanji'] - The type of request to make to the Wanikani API
 	*/
 	getServerResp: function(APIkey, requestedItem){
-
+		console.groupCollapsed("%cGetting Response through API using APIkey: %c"+APIkey, "font-weight: bold;", "color: red; font-family:monospace;");
         requestedItem = requestedItem === void 0 ? 'kanji' :requestedItem;
-
         if (APIkey !== "test"){
             var levels = (requestedItem ==="kanji")? "/1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50":
-            "/1,2,3,4,5,6,7,8,9,10";
-            var xhrk = this.createCORSRequest("get", "https://www.wanikani.com/api/user/" + APIkey + "/" + requestedItem + levels);
+            "/1,2,3,4,5,6,7,8,9,10"; // Vocab times out if you try to do it all at once. Limited to ten for now.
+            var xhrk = ServerUtil.createCORSRequest("get", "https://www.wanikani.com/api/user/" + APIkey + "/" + requestedItem + levels);
             if (!ObjectUtil.isEmpty(xhrk)){
                 xhrk.onreadystatechange = function() {
                     if (xhrk.readyState == 4){
@@ -3576,20 +3360,19 @@ var WanikaniUtil = {
                             //update locks in localStorage 
                             //pass kanjilist into this function
                             //(don't shift things through storage unecessarily)
-                            StorageUtil.refreshLocks();
+                            SetReviewsUtil.refreshLocks();
                         }
 						else{
                             var v = kanjiList.length;
                             console.log(v + " items found, attempting to import");
                             while (v--){
-                                StorageUtil.setVocItem(kanjiList[v]);
+                                SetReviewsUtil.setVocItem(kanjiList[v]);
                             }
                         }
                     }
                 }.bind(this);
 
                 xhrk.send();
-                console.log("below");  
             }
         }
 		else {
@@ -3617,7 +3400,8 @@ var WanikaniUtil = {
                 //update locks in localStorage
                 StorageUtil.refreshLocks();
             }, 10000);
-        }   
+        }
+		console.groupEnd();
     },
 	
 	handleReadyStateFour: function(xhrk, requestedItem){
@@ -3665,7 +3449,7 @@ var WanikaniUtil = {
 };
 
 module.exports = WanikaniUtil;
-},{"./hijackrequests.js":5,"./objectutil.js":7,"./storageutil.js":9}],13:[function(require,module,exports){
+},{"./hijackrequests.js":5,"./objectutil.js":8,"./serverutil.js":9,"./setreviewsutil.js":10,"./storageutil.js":12}],17:[function(require,module,exports){
 // Window Configs
 module.exports = {
 	add:{height: "300px", width: "300px"},
@@ -3674,310 +3458,275 @@ module.exports = {
 	study:{height: "auto", width: "600px"}, //height : auto
 	result:{height: "500px", width: "700px"}
 };
-},{}],14:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 /* jshint multistr: true */
 // Config for window sizes in pixels
 var windowConfig = require('./windowconfig.js');
 
-//.WKSS
-var classWKSS = [
-	{position: "fixed"},
-	{zIndex: "2"},
-	{top: "125px"},
-	{left: "50%"},
-	{margin: "0px"},
-	{background: "#FFF"},
-	{padding: "5px"},
-	{font: "12px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif"},
-	{color: "#888"},
-	{textShadow: "1px 1px 1px #FFF"},
-	{border: "1px solid #DDD"},
-	{borderRadius: "5px"},
-	{WebkitBorderRadius: "5px"},
-	{MozBorderRadius: "5px"},
-	{boxShadow: "10px 10px 5px #888888"}
-];
+var isUpperCase = function(ch){
+	return ch === ch.toUpperCase() && ch !== ch.toLowerCase();
+};
 
-//.WKSS h1
-var classWKSS_h1 = [
-	{font: "25px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif"},
-	{paddingLeft: "5px"},
-	{display: "block"},
-	{borderBottom: "1px solid #DADADA"},
-	{margin: "0px"},
-	{color: "#888"}
-];
+var camelCaseToDashed = function(camelCase){
+	var dashedString = "";
+	for (var ch in camelCase){
+		dashedString += isUpperCase(camelCase[ch]) ? "-"+camelCase[ch].toLowerCase() : camelCase[ch];
+	}
+	return dashedString;
+};
+var cssObjectToString = function(cssSelector, cssObj){
+	var cssString = cssSelector + " {\r\n";
+	for (var cssItem in cssObj){
+		cssString += camelCaseToDashed(cssItem) + ": " + cssObj[cssItem] + ";\r\n";
+	}
+	cssString += "}\r\n";
+	return cssString;
+};
 
-//.WKSS h1 > span
-var classWKSS_h1_direct_Span = [
-	{display: "block"},
-	{fontSize: "11px"}
-];
-
-//.WKSS label
-var w = [
-	{display: "block"},
-	{margin: "0px 0px 5px"},
-];
-
-//.WKSS label>span
-w = [
-	{float: "left"},
-	{width: "80px"},
-	{textAlign: "right"},
-	{paddingRight: "10px"},
-	{marginTop: "10px"},
-	{color: "#333"},
-	{fontFamily: "\"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif"},
-	{fontWeight: "bold"}
-];
-
-//.WKSS input[type=\"text\"], .WKSS input[type=\"email\"], .WKSS textarea 
-w = [
-	{border: "1px solid #CCC"},
-	{color: "#888"},
-	{height: "20px"},
-	{marginBottom: "16px"},
-	{marginRight: "6px"},
-	{marginTop: "2px"},
-	{outline: "0 none"},
-	{padding: "6px 12px"},
-	{width: "80%"},
-	{borderRadius: "4px"},
-	{lineHeight: "normal !important"},
-	{WebkitBorderRadius: "4px"},
-	{MozBorderRadius: "4px"},
-	{font: "normal 14px/14px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif"},
-	{WebkitBoxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.075)"},
-	{boxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.075)"},
-	{MozBoxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.075)"}
-];
-
-//.WKSS select
-w = [
-	{border: "1px solid \"#CCC\""},
-	{color: "#888"},
-	{outline: "0 none"},
-	{padding: "6px 12px"},
-	{height: "160px !important"},
-	{width: "95%"},
-	{borderRadius: "4px"},
-	{WebkitBorderRadius: "4px"},
-	{MozBorderRadius: "4px"},
-	{font: "normal 14px/14px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif"},
-	{WebkitBoxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.075)"},
-	{boxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.075)"},
-	{MozBoxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.075)"},
-	{background: "#FFF url('down-arrow.png') no-repeat right"},
-	{appearance: "none"},
-	{WebkitAppearance: "none"},
-	{MozAppearance: "none"},
-	{textIndent: "0.01px"},
-	{textOverflow: "''"}
-];
-
+var classWKSS = cssObjectToString('.custom .dropdown-menu', {backgroundColor: "#DBA901 !important"}) +
+cssObjectToString('.custom .dropdown-menu:after', {borderBottomColor: "#DBA901 !important"}) +
+cssObjectToString('.custom .dropdown-menu:before', {borderBottomColor: "#DBA901 !important"}) +
+cssObjectToString('.open .dropdown-toggle.custom', {backgroundColor: "#FFC400 !important"}) +
+cssObjectToString('.custom .dropdown-menu a:hover', {backgroundColor: "#A67F00 !important"}) +
+cssObjectToString('.custom:hover', {color: "#FFC400 !important"}) +
+cssObjectToString('.custom:hover span', {borderColor: "#FFC400 !important"}) +
+cssObjectToString('.custom:focus', {color: "#FFC400 !important"}) +
+cssObjectToString('.custom:focus span', {borderColor: "#FFC400 !important"}) +
+cssObjectToString('.open .custom span', {borderColor: "#FFFFFF !important"}) +
+cssObjectToString('.open .custom', {color: "#FFFFFF !important"}) +
+cssObjectToString('.WKSS', {
+	position: "fixed",
+	zIndex: "2",
+	top: "125px",
+	left: "50%",
+	margin: "0px",
+	background: "#FFF",
+	padding: "5px",
+	font: "12px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif",
+	color: "#888",
+	textShadow: "1px 1px 1px #FFF",
+	border: "1px solid #DDD",
+	borderRadius: "5px",
+	WebkitBorderRadius: "5px",
+	MozBorderRadius: "5px",
+	boxShadow: "10px 10px 5px #888888"
+}) + 
+cssObjectToString('.WKSS h1', {//.WKSS h1
+	font: "25px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif",
+	paddingLeft: "5px",
+	display: "block",
+	borderBottom: "1px solid #DADADA",
+	margin: "0px",
+	color: "#888"
+}) + 
+cssObjectToString('.WKSS h1 > span', {//.WKSS h1 > span
+	display: "block",
+	fontSize: "11px"
+}) +
+cssObjectToString('.WKSS label', {//.WKSS label
+	display: "block",
+	margin: "0px 0px 5px"
+}) +
+cssObjectToString('.WKSS label>span', {//.WKSS label>span
+	float: "left",
+	width: "80px",
+	textAlign: "right",
+	paddingRight: "10px",
+	marginTop: "10px",
+	color: "#333",
+	fontFamily: "\"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif",
+	fontWeight: "bold"
+}) +
+cssObjectToString('.WKSS input[type=\"text\"], .WKSS input[type=\"email\"], .WKSS textarea', {//.WKSS input[type=\"text\"], .WKSS input[type=\"email\"], .WKSS textarea 
+	border: "1px solid #CCC",
+	color: "#888",
+	height: "20px",
+	marginBottom: "16px",
+	marginRight: "6px",
+	marginTop: "2px",
+	outline: "0 none",
+	padding: "6px 12px",
+	width: "80%",
+	borderRadius: "4px",
+	lineHeight: "normal !important",
+	WebkitBorderRadius: "4px",
+	MozBorderRadius: "4px",
+	font: "normal 14px/14px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif",
+	WebkitBoxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.075)",
+	boxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.075)",
+	MozBoxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.075)"
+}) +
+cssObjectToString('.WKSS select', {//.WKSS select
+	border: "1px solid \"#CCC\"",
+	color: "#888",
+	outline: "0 none",
+	padding: "6px 12px",
+	height: "160px !important",
+	width: "95%",
+	borderRadius: "4px",
+	WebkitBorderRadius: "4px",
+	MozBorderRadius: "4px",
+	font: "normal 14px/14px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif",
+	WebkitBoxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.075)",
+	boxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.075)",
+	MozBoxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.075)",
+	background: "#FFF url('down-arrow.png') no-repeat right",
+	appearance: "none",
+	WebkitAppearance: "none",
+	MozAppearance: "none",
+	textIndent: "0.01px",
+	textOverflow: "''"
+}) +
 //.WKSS textarea
-w = [
-	{height: "100px"}
-];
-
-//.WKSS button, .button
-w = [
-	{position: "relative"},
-	{background: "#FFF"},
-	{border: "1px solid #CCC"},
-	{padding: "10px 25px 10px 25px"},
-	{color: "#333"},
-	{borderRadius: "4px"},
-	{display: "inline !important"}
-];
-
-//.WKSS button:disabled
-w = [
-	{background: "#EBEBEB"},
-	{border: "1px solid #CCC"},
-	{padding: "10px 25px 10px 25px"},
-	{color: "#333"},
-	{borderRadius: "4px"}
-];
-
-//.WKSS .button:hover, button:hover:enabled
-w = [
-	{color: "#333"},
-	{backgroundColor: "#EBEBEB"},
-	{borderColor: "#ADADAD"}
-];
-
+cssObjectToString('.WKSS textarea', {height: "100px"}) +
+cssObjectToString('.WKSS button, .button',{//.WKSS button, .button
+	position: "relative",
+	background: "#FFF",
+	border: "1px solid #CCC",
+	padding: "10px 25px 10px 25px",
+	color: "#333",
+	borderRadius: "4px",
+	display: "inline !important"
+}) +
+cssObjectToString('.WKSS button:disabled', {//.WKSS button:disabled
+	background: "#EBEBEB",
+	border: "1px solid #CCC",
+	padding: "10px 25px 10px 25px",
+	color: "#333",
+	borderRadius: "4px"
+}) +
+cssObjectToString('.WKSS .button:hover, button:hover:enabled', {//.WKSS .button:hover, button:hover:enabled
+	color: "#333",
+	backgroundColor: "#EBEBEB",
+	borderColor: "#ADADAD"
+}) +
 //.WKSS button:hover:disabled
-w = [
-	{cursor: "default"}                             
-];
-
-//.error
-w = [
-	{borderColor:"#F00 !important"},
-	{color: "#F00 !important"}
-];
-
-//.caution
-w = [
-	{borderColor: "#F90 !important"},
-	{color: "#F90 !important"}
-];
-
-//.correct
-w = [
-	{borderColor: "#0F0 !important"},
-	{color: "#0F0 !important"}
-];
-
-//.info
-w = [
-	{borderColor: "#696969 !important"},
-	{color: "#696969 !important"}
-];
-
-//.rev-error
-w = [
-	{textShadow: "none"},
-	{border: "1px solid #F00 !important"},
-	{borderRadius: "10px"},
-	{backgroundColor: "#F00"},
-	{padding: "4px"},
-	{margin: "4px"},
-	{color: "#FFFFFF"},
-	{font: "normal 18px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif"}
-];
-
-//.rev-correct
-w = [
-	{textShadow:"none"},
-	{border: "1px"},
-	{solid: "#088A08 !important"},
-	{borderRadius: "10px"},
-	{backgroundColor: "#088A08"},
-	{padding: "4px"},
-	{margin:"4px"},
-	{color: "#FFFFFF"},
-	{font: "normal 18px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif"}
-];
-
-//#add
-w = [
-	{width: windowConfig.add.width},
-	{height: windowConfig.add.height},
-	{marginLeft: -windowConfig.add.width/2}
-];
-
-//#export, #import
-w = [
-{background: "#fff"},
-	{width: windowConfig.exportImport.width},
-	{height: windowConfig.exportImport.height},
-	{marginLeft: -windowConfig.exportImport.width/2}
-];
-
-//#edit
-w = [
-	{width: windowConfig.edit.width},
-	{height: windowConfig.edit.height},
-	{marginLeft: -windowConfig.edit.width/2}
-];
-
-//#selfstudy
-w = [
-	{left: "50%"},
-	{width: windowConfig.study.width},
-	{height: windowConfig.study.height},
-	{marginLeft: -windowConfig.study.width/2}
-];
-
-//#resultwindow
-w = [
-	{left:"50%"},
-	{width: windowConfig.result.width + "px"},
-	{height: windowConfig.result.height + "px"},
-	{marginLeft: -windowConfig.result.width/2 + "px"}
-];
-
-//#AudioButton
-w = [
-	{marginTop: "35px"},
-	{position: "relative"},
-	{display: "inline !important"},
-	{WebkitMarginBefore: "50px"}
-];
-
-//button.wkss-close
-w = [
-	{float: "right"},
-	{backgroundColor: "#ff4040"},
-	{color: "#fff"},
-	{padding: "0px"},
-	{height: "27px"},
-	{width: "27px"}
-];
-
-//#wkss-close
-w = [
-	{float: "right"},
-	{backgroundColor: "#ff4040"},
-	{color: "#fff"},
-	{padding: "0px"},
-	{height: "27px"},
-	{width: "27px"}
-];
-
-//#wkss-kanji, #rev-kanji
-w = [
-	{textAlign: "center !important"},
-	{fontSize: "50px !important"},
-	{backgroundColor: "#9400D3 !important"},
-	{color: "#FFFFFF !important"},
-	{borderRadius: "10px 10px 0px 0px"}
-];
-
-//#wkss-solution, #rev-solution
-w = [
-	{textAlign: "center !important"},
-	{fontSize: "30px !important"},
-	{color: "#FFFFFF"},
-	{padding: "2px"}
-];
-
-//#wkss-type
-w = [
-	{textAlign: "center !important"},
-	{fontSize: "24px !important"},
-	{backgroundColor: "#696969"},
-	{color: "#FFFFFF !important"},
-	{borderRadius: "0px 0px 10px 10px"}
-];
-
-//#rev-type
-w = [
-	{textAlign: "center !important"},
-	{fontSize: "24px !important"},
-	{color: "#FFFFFF !important"},
-	{borderRadius: "0px 0px 10px 10px"}
-];
-//#wkss-input
-w = [
-	{textAlign: "center !important"},
-	{fontSize: "40px !important"},
-	{height: "80px !important"},
-	{lineHeight: "normal !important"}
-];
-
-//#rev-input
-w = [
-	{textAlign: "center !important"},
-	{fontSize: "40px !important"},
-	{height: "60px !important"},
-	{lineHeight: "normal !important"}
-];
-
+cssObjectToString('.WKSS button:hover:disabled', {cursor: "default"}) +
+cssObjectToString('.error', {//.error
+	borderColor:"#F00 !important",
+	color: "#F00 !important"
+}) +
+cssObjectToString('.caution', {//.caution
+	borderColor: "#F90 !important",
+	color: "#F90 !important"
+}) +
+cssObjectToString('.correct', {//.correct
+	borderColor: "#0F0 !important",
+	color: "#0F0 !important"
+}) +
+cssObjectToString('.info', {
+	borderColor: "#696969 !important",
+	color: "#696969 !important"
+}) +
+cssObjectToString('.rev-error', {
+	textShadow: "none",
+	border: "1px solid #F00 !important",
+	borderRadius: "10px",
+	backgroundColor: "#F00",
+	padding: "4px",
+	margin: "4px",
+	color: "#FFFFFF",
+	font: "normal 18px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif"
+}) +
+cssObjectToString('.rev-correct', {
+	textShadow:"none",
+	border: "1px",
+	solid: "#088A08 !important",
+	borderRadius: "10px",
+	backgroundColor: "#088A08",
+	padding: "4px",
+	margin:"4px",
+	color: "#FFFFFF",
+	font: "normal 18px \"ヒラギノ角ゴ Pro W3\", \"Hiragino Kaku Gothic Pro\",Osaka, \"メイリオ\", Meiryo, \"ＭＳ Ｐゴシック\", \"MS PGothic\", sans-serif"
+}) +
+cssObjectToString('#WKSS-add', {
+	width: windowConfig.add.width,
+	height: windowConfig.add.height,
+	marginLeft: -windowConfig.add.width/2
+}) +
+cssObjectToString('#WKSS-export, #WKSS-import', {
+	background: "#fff",
+	width: windowConfig.exportImport.width,
+	height: windowConfig.exportImport.height,
+	marginLeft: -windowConfig.exportImport.width/2
+}) +
+cssObjectToString('#edit', {
+	width: windowConfig.edit.width,
+	height: windowConfig.edit.height,
+	marginLeft: -windowConfig.edit.width/2
+}) +
+cssObjectToString('#selfstudy', {	left: "50%",
+	width: windowConfig.study.width,
+	height: windowConfig.study.height,
+	marginLeft: -windowConfig.study.width/2
+}) +
+cssObjectToString('#resultwindow', {
+	left:"50%",
+	width: windowConfig.result.width + "px",
+	height: windowConfig.result.height + "px",
+	marginLeft: -windowConfig.result.width/2 + "px"
+}) +
+cssObjectToString('#AudioButton', {
+	marginTop: "35px",
+	position: "relative",
+	display: "inline !important",
+	WebkitMarginBefore: "50px"
+}) +
+cssObjectToString('button.wkss-close', {
+	float: "right",
+	backgroundColor: "#ff4040",
+	color: "#fff",
+	padding: "0px",
+	height: "27px",
+	width: "27px"
+}) +
+cssObjectToString('#wkss-close', {
+	float: "right",
+	backgroundColor: "#ff4040",
+	color: "#fff",
+	padding: "0px",
+	height: "27px",
+	width: "27px"
+}) +
+cssObjectToString('#wkss-kanji, #rev-kanji', {
+	textAlign: "center !important",
+	fontSize: "50px !important",
+	backgroundColor: "#9400D3 !important",
+	color: "#FFFFFF !important",
+	borderRadius: "10px 10px 0px 0px"
+}) +
+cssObjectToString('#wkss-solution, #rev-solution', {
+	textAlign: "center !important",
+	fontSize: "30px !important",
+	color: "#FFFFFF",
+	padding: "2px"
+}) +
+cssObjectToString('#wkss-type', {
+	textAlign: "center !important",
+	fontSize: "24px !important",
+	backgroundColor: "#696969",
+	color: "#FFFFFF !important",
+	borderRadius: "0px 0px 10px 10px"
+}) +
+cssObjectToString('#rev-type', {
+	textAlign: "center !important",
+	fontSize: "24px !important",
+	color: "#FFFFFF !important",
+	borderRadius: "0px 0px 10px 10px"
+}) +
+cssObjectToString('#wkss-input', {
+	textAlign: "center !important",
+	fontSize: "40px !important",
+	height: "80px !important",
+	lineHeight: "normal !important"
+}) +
+cssObjectToString('#rev-input', {
+	textAlign: "center !important",
+	fontSize: "40px !important",
+	height: "60px !important",
+	lineHeight: "normal !important"
+});
 //----
 module.exports = classWKSS;
 //module.exports = wkstyleCSS;
-},{"./windowconfig.js":13}]},{},[10]);
+},{"./windowconfig.js":17}]},{},[13]);

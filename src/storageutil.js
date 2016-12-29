@@ -6,6 +6,31 @@ var StorageUtil = {
 			this.localSet("User-Vocab", []);
 		}
 	},
+	/** Handle the users API key.
+	* @param {string} APIkey - the users API key to set. If given "YOUR_API_HERE", it will return the key in browser storage.
+	* @returns {string} the users API key as supplied and stored, or in the case of "YOUR_API_HERE" being passed, the stored key.
+	*/
+    getSetApi: function(APIkey){
+        var storedAPI = localStorage.getItem('Wanikani-API');
+        if (!APIkey || APIkey === "YOUR_API_HERE"){
+            if (storedAPI !== null && storedAPI !== "undefined"){
+                APIkey = storedAPI;
+            }
+        }
+		else{
+            //API has been set in code.
+            if (storedAPI !== APIkey){
+                StorageUtil.saveUserApi(APIkey);//overwrite with new API
+            }
+        }
+        return APIkey;
+    },
+	saveUserApi: function(APIkey){
+		if (APIkey){
+			this.localSet("Wanikani-API", APIkey);
+		}
+	},
+
 	parseString: function(strObj){
         //avoids duplication of code for sesssionGet and localGet
         var obj;
@@ -64,46 +89,7 @@ var StorageUtil = {
     },
 	setVocList: function(vocList){
 		this.localSet('User-Vocab', vocList);
-	},
-	/** Sets the locks on all Tasks in storage
-	*/
-	refreshLocks: function(){
-		var vocList = StorageUtil.getVocList().map(function(vocItem){
-			console.log("vocList[i] = setLocks(vocList[i]);");
-			vocItem = setLocks(vocItem);  
-			return vocItem;
-		}, this);
-		console.groupEnd();
-		StorageUtil.setVocList(vocList);
-    },
-	/**
-	*/
-	setVocItem: function(item){
-        //Assumption: item comes only with kanji, reading and meaning
-        item.level = 0;
-        item.date = Date.now();
-        item.manualLock = "";
-        item = setLocks(item);
-		 //0.1.9 adding in 'due' property to make review building simpler
-        item.due = item.date + srsObject[item.level].duration;
-
-        var vocList = localGet('User-Vocab')||[];
-
-		var found = vocList.find(function(task){
-            return task.kanji === item.kanji;
-        }, this);
-		//add meaning and reading to existing item
-		//        vocList[v].meaning = item.meaning;
-		//      vocList[v].reading = item.reading;
-        if (!found) {
-            //provide index for faster searches
-            console.log(item.kanji +" not found in vocablist, adding now");
-            item.i = vocList.length;
-            vocList.push(item);
-
-            localSet('User-Vocab',vocList);
-        }
-    }
+	}
 };
 
 module.exports = StorageUtil;

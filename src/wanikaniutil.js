@@ -1,35 +1,22 @@
 var ObjectUtil = require('./objectutil.js');
 var StorageUtil = require('./storageutil.js');
+var ServerUtil = require('./serverutil.js');
+var SetReviewsUtil = require('./setreviewsutil.js');
 /** Utilities for interaction with the Wanikani API and general website.
 */
 var WanikaniUtil = {
 	hijackRequests: require('./hijackrequests.js'),
-	createCORSRequest: function(method, url){
-        var xhr = new XMLHttpRequest();
-        if ("withCredentials" in xhr){
-            xhr.open(method, url, true);
-        }
-		else if (typeof XDomainRequest !== "undefined"){
-            xhr = new XDomainRequest();
-            xhr.open(method, url);
-        }
-		else {
-            xhr = null;
-        }
-        return xhr;
-    },
 	/** Gets the user information using the Wanikani API and stores them directly into browser storage.
 	* @param
-	* @param
+	* @param {string} [requestedItem = 'kanji'] - The type of request to make to the Wanikani API
 	*/
 	getServerResp: function(APIkey, requestedItem){
-
+		console.groupCollapsed("%cGetting Response through API using APIkey: %c"+APIkey, "font-weight: bold;", "color: red; font-family:monospace;");
         requestedItem = requestedItem === void 0 ? 'kanji' :requestedItem;
-
         if (APIkey !== "test"){
             var levels = (requestedItem ==="kanji")? "/1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50":
-            "/1,2,3,4,5,6,7,8,9,10";
-            var xhrk = this.createCORSRequest("get", "https://www.wanikani.com/api/user/" + APIkey + "/" + requestedItem + levels);
+            "/1,2,3,4,5,6,7,8,9,10"; // Vocab times out if you try to do it all at once. Limited to ten for now.
+            var xhrk = ServerUtil.createCORSRequest("get", "https://www.wanikani.com/api/user/" + APIkey + "/" + requestedItem + levels);
             if (!ObjectUtil.isEmpty(xhrk)){
                 xhrk.onreadystatechange = function() {
                     if (xhrk.readyState == 4){
@@ -41,20 +28,19 @@ var WanikaniUtil = {
                             //update locks in localStorage 
                             //pass kanjilist into this function
                             //(don't shift things through storage unecessarily)
-                            StorageUtil.refreshLocks();
+                            SetReviewsUtil.refreshLocks();
                         }
 						else{
                             var v = kanjiList.length;
                             console.log(v + " items found, attempting to import");
                             while (v--){
-                                StorageUtil.setVocItem(kanjiList[v]);
+                                SetReviewsUtil.setVocItem(kanjiList[v]);
                             }
                         }
                     }
                 }.bind(this);
 
                 xhrk.send();
-                console.log("below");  
             }
         }
 		else {
@@ -82,7 +68,8 @@ var WanikaniUtil = {
                 //update locks in localStorage
                 StorageUtil.refreshLocks();
             }, 10000);
-        }   
+        }
+		console.groupEnd();
     },
 	
 	handleReadyStateFour: function(xhrk, requestedItem){

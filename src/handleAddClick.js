@@ -1,3 +1,6 @@
+var StorageUtil = require('./storageutil.js');
+var SetReviewsUtil = require('./setreviewsutil.js');
+
 module.exports = function(){
 
 	var kanji = $("#addKanji").val().toLowerCase();
@@ -25,14 +28,15 @@ module.exports = function(){
 		} else {
 			$("#addMeaning").removeClass("error");
 		}
-	} else {
-		if (debugging) {console.log("building item: "+kanji);}
+	}
+	else {
+		console.log("building item: "+kanji);
 		item.kanji = kanji;
 		item.reading = reading; //optional
 		item.meaning = meaning;
 
 		success = true;
-		if (debugging) {console.log("item is valid");}
+		console.log("item is valid");
 	}
 
 	//on successful creation of item
@@ -41,23 +45,20 @@ module.exports = function(){
 		$("#addKanji").removeClass("error");
 		$("#addMeaning").removeClass("error");
 
-
-
 		//if there are already user items, retrieve vocabList
-		// var vocabList = [];
-		var vocabList = getFullList();
+		var vocabList = StorageUtil.getVocList();
 
-		if (debugging) {console.log("vocabList retrieved, length: "+vocabList.length);}
+		console.log("vocabList retrieved, length: "+vocabList.length);
 		//check stored user items for duplicates ****************** to do: option for editing duplicate item with new input
-		if(checkForDuplicates(vocabList,item)) {
+		if(SetReviewsUtil.checkForDuplicates(vocabList,item)) {
 			$("#addStatus").text("Duplicate Item detected!");
 			$("#addKanji").addClass("error");
 			return;
 		}
 
-		setVocItem(item);
+		SetReviewsUtil.setVocItem(item);
 
-		if (debugging) {console.log("clear form");}
+		console.log("clear form");
 		$("#addForm")[0].reset();
 
 		//--------------------------------------------------------------------------------------------------------
