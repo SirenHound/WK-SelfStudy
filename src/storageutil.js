@@ -55,12 +55,30 @@ var StorageUtil = {
         var strObj = localStorage.getItem(strName);
         return this.parseString(strObj);
     },
+	localRemove: function(strName){
+		if (localStorage.getItem(strName) !== null){
+			localStorage.removeItem(strName);
+			return true;
+		}
+		else{
+			return false;
+		}
+	},
 	/** Sets strings and objects into browser storage
 	* @requires localStorage
 	* @requires JSON
 	*/
 	localSet: function(strName, obj){
         localStorage.setItem(strName, typeof obj === "string"? obj : JSON.stringify(obj));
+    },
+	/** Only sets strings and objects into browser storage if they are not already there
+	* @requires localStorage
+	* @requires JSON
+	*/
+	localSetFirstTime: function(strName, obj){
+		if (!this.localGet(strName)){
+			localStorage.setItem(strName, typeof obj === "string"? obj : JSON.stringify(obj));
+		}
     },
 	/**
 	*/

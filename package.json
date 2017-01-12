@@ -1,6 +1,6 @@
 {
   "name": "wkselfstudy",
-  "version": "1.0.0",
+  "version": "0.2.1",
   "description": "WaniKani Self Study Plus",
   "main": "src/trunk.js",
   "scripts": {

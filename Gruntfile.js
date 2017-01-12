@@ -1,8 +1,35 @@
 module.exports = function(grunt){
 	grunt.initConfig({
+		pkg: grunt.file.readJSON('package.json'),
 		concat:{
+			options: {
+			  stripBanners: true,
+			  banner: '// ==UserScript==\r\n' +
+				'// @name        Wanikani Self-Study Plus\r\n' +
+				'// @namespace   wkselfstudyplus\r\n' +
+				'// @description Adds an option to add and review your own custom vocabulary\r\n' +
+				'// @include     *.wanikani.com/*\r\n' +
+				'// @include     *.wanikani.com/chat/*\r\n' +
+				'// @exclude	    *.wanikani.com\r\n' +
+				'// @include     *.wanikani.com/dashboard*\r\n' +
+				'// @include     *.wanikani.com/community*\r\n' +
+				'// @version     <%= pkg.version %>\r\n' +
+				'// @author      shudouken and Ethan\r\n' +
+				'// @run-at      document-end\r\n' +
+				'// @grant       none\r\n' +
+				'// ==/UserScript==\r\n' +
+				'/*! <%= pkg.name %> - v<%= pkg.version %> - ' +
+				'<%= grunt.template.today("yyyy-mm-dd") %> */'
+			},
+			/**  This script is licensed under the Creative Commons License
+			 *  "Attribution-NonCommercial 3.0 Unported"
+			 *
+			 *  More information at:
+			 *  http://creativecommons.org/licenses/by-nc/3.0/
+			 */
+
 			dist: {
-			  src: ['src/userscriptheader.js', 'dist/wkss.js'],
+			  src: ['dist/wkss.js'],
 			  dest: 'dist/wkssp.js',
 			}
 		},

@@ -5,6 +5,31 @@ var SetReviewsUtil = require('./setreviewsutil.js');
 /** Utilities for interaction with the Wanikani API and general website.
 */
 var WanikaniUtil = {
+	//take out of here soon!
+	//Called by reference to xhrk
+	onStateChangeHandler: function() {
+		if (this.readyState == 4){
+			var kanjiList = WanikaniUtil.handleReadyStateFour(this, this.requestedItem);
+
+			if (this.requestedItem === 'kanji'){
+				StorageUtil.localSet('User-KanjiList', kanjiList);
+				console.log("kanjiList from server", kanjiList);
+				//update locks in localStorage 
+				//pass kanjilist into this function
+				//(don't shift things through storage unecessarily)
+//--
+				SetReviewsUtil.refreshLocks();
+			}
+			else{
+				var v = kanjiList.length;
+				console.log(v + " items found, attempting to import");
+				while (v--){
+//--
+					SetReviewsUtil.setVocItem(kanjiList[v]);
+				}
+			}
+		}
+	},
 	hijackRequests: require('./hijackrequests.js'),
 	/** Gets the user information using the Wanikani API and stores them directly into browser storage.
 	* @param
@@ -76,7 +101,7 @@ var WanikaniUtil = {
 
         var localkanjiList = [];
         console.log("readystate: "+ xhrk.readyState);
-        var resp = JSON.parse(xhrk.responseText);
+        var resp = StorageUtil.parseString(xhrk.responseText);
         console.log("about to loop through requested information"); 
 		if (resp.requested_information && resp.requested_information.length){
 			
