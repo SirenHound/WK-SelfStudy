@@ -2,17 +2,16 @@ var StorageUtil = require('./storageutil.js');
 var ObjectUtil = require('./objectutil.js');
 var SettingsUtil = require('./settingsutil.js');
 
-console.log("Utils", ObjectUtil[0], SettingsUtil[0],StorageUtil[0], require);
 /** Prepare Reviews and put them into storage.
 */
 var SetReviewsUtil = {
 	importItemsHandler: function() {
-        if ($("#importArea").val().length !== 0) {
+		var impt = document.getElementById("importArea").value;
+        if (impt.length !== 0) {
             try {
-                var add = JSON.parse($("#importArea").val().toLowerCase());
-                alert(JSON.stringify(add));
+                var add = JSON.parse(impt.toLowerCase());
                 if (setReviewsUtil.checkAdd(add)) {
-                    $("#importStatus").text("No valid input (duplicates?)!");
+                    document.getElementById("importStatus").appendChild(document.createTextNode("No valid input (duplicates?)!"));
                     return;
                 }
 

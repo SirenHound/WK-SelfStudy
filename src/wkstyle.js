@@ -2,21 +2,25 @@
 // Config for window sizes in pixels
 var windowConfig = require('./windowconfig.js');
 
-var isUpperCase = function(ch){
-	return ch === ch.toUpperCase() && ch !== ch.toLowerCase();
+var StringUtil = {
+	
+	isUpperCase: function(ch){
+		return ch === ch.toUpperCase() && ch !== ch.toLowerCase();
+	},
+
+	camelCaseToDashed: function(camelCase){
+		var dashedString = "";
+		for (var ch in camelCase){
+			dashedString += this.isUpperCase(camelCase[ch]) ? "-"+camelCase[ch].toLowerCase() : camelCase[ch];
+		}
+		return dashedString;
+	}
 };
 
-var camelCaseToDashed = function(camelCase){
-	var dashedString = "";
-	for (var ch in camelCase){
-		dashedString += isUpperCase(camelCase[ch]) ? "-"+camelCase[ch].toLowerCase() : camelCase[ch];
-	}
-	return dashedString;
-};
 var cssObjectToString = function(cssSelector, cssObj){
 	var cssString = cssSelector + " {\r\n";
 	for (var cssItem in cssObj){
-		cssString += camelCaseToDashed(cssItem) + ": " + cssObj[cssItem] + ";\r\n";
+		cssString += StringUtil.camelCaseToDashed(cssItem) + ": " + cssObj[cssItem] + ";\r\n";
 	}
 	cssString += "}\r\n";
 	return cssString;

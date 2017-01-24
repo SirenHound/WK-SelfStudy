@@ -1,11 +1,11 @@
 var StorageUtil = require('./storageutil.js');
 var SetReviewsUtil = require('./setreviewsutil.js');
-
+var WanikaniDomUtil = require('./wanikanidomutil.js');
 module.exports = function(){
 
-	var kanji = $("#addKanji").val().toLowerCase();
-	var reading = $("#addReading").val().toLowerCase().split(/[,、]+\s*/); //split at , or 、followed by 0 or any number of spaces
-	var meaning = $("#addMeaning").val().toLowerCase().split(/[,、]+\s*/);
+	var kanji = document.getElementById("addKanji").value.toLowerCase();
+	var reading = document.getElementById("addReading").value.toLowerCase().split(/[,、]+\s*/); //split at , or 、followed by 0 or any number of spaces
+	var meaning = document.getElementById("addMeaning").value.toLowerCase().split(/[,、]+\s*/);
 	var success = false; //initalise values
 	var meanlen = 0;
 
@@ -17,16 +17,19 @@ module.exports = function(){
 	//input is invalid: prompt user for valid input
 	var item = {};
 	if (kanji.length === 0 || meanlen === 0) {
-		$("#addStatus").text("One or more required fields are empty!");
+		document.getElementById("addStatus").innerText = "One or more required fields are empty!";
 		if (kanji.length === 0) {
-			$("#addKanji").addClass("error");
-		} else {
-			$("#addKanji").removeClass("error");
+			WanikaniDomUtil.addClass(document.getElementById("addKanji"), "error");
 		}
+		else {
+			WanikaniDomUtil.removeClass(document.getElementById("addKanji"), "error");
+		}
+
 		if (meanlen === 0) {
-			$("#addMeaning").addClass("error");
-		} else {
-			$("#addMeaning").removeClass("error");
+			WanikaniDomUtil.addClass(document.getElementById("addMeaning"), "error");
+		}
+		else {
+			WanikaniDomUtil.removeClass(document.getElementById("addMeaning"), "error");
 		}
 	}
 	else {
@@ -42,8 +45,8 @@ module.exports = function(){
 	//on successful creation of item
 	if (success) {
 		//clear error layout to required fields
-		$("#addKanji").removeClass("error");
-		$("#addMeaning").removeClass("error");
+		WanikaniDomUtil.removeClass(document.getElementById("addKanji"), "error");
+		WanikaniDomUtil.removeClass(document.getElementById("addMeaning"), "error");
 
 		//if there are already user items, retrieve vocabList
 		var vocabList = StorageUtil.getVocList();
@@ -51,21 +54,22 @@ module.exports = function(){
 		console.log("vocabList retrieved, length: "+vocabList.length);
 		//check stored user items for duplicates ****************** to do: option for editing duplicate item with new input
 		if(SetReviewsUtil.checkForDuplicates(vocabList,item)) {
-			$("#addStatus").text("Duplicate Item detected!");
-			$("#addKanji").addClass("error");
+			document.getElementById("addStatus").innerText = "Duplicate Item detected!";
+			WanikaniDomUtil.removeClass(document.getElementById("addKanji"), "error");
 			return;
 		}
 
 		SetReviewsUtil.setVocItem(item);
 
 		console.log("clear form");
-		$("#addForm")[0].reset();
+		document.getElementById("addForm").reset();
 
 		//--------------------------------------------------------------------------------------------------------
 		if (item.manualLock === "yes" || item.manualLock === "DB" && lockDB){
-			$("#addStatus").html("<i class=\"icon-lock\"></i> Added locked item");
-		} else {
-			$("#addStatus").html("<i class=\"icon-unlock\"></i>Added successfully");
+			document.getElementById("addStatus").innerHTML = "<i class=\"icon-lock\"></i> Added locked item";
+		}
+		else {
+			document.getElementById("addStatus").innerHTML = "<i class=\"icon-unlock\"></i>Added successfully";
 		}
 		//--------------------------------------------------------------------------------------------------------
 	}
