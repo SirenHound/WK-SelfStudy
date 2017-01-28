@@ -1173,22 +1173,35 @@ var ServerUtil = {
 					callback(APIkey);
 				}
 			}
-		}.bind(this);
-		xhrk.send();
+		};
+		try{
+			xhrk.send();
+		}
+		catch (e){
+			console.log("An error has occurred: ", e);
+			console.error("An error has occurred: ", e);
+			
+		}
 	},
 	createCORSRequest: function(method, url){
 		var xhr = new XMLHttpRequest();
-		if ("withCredentials" in xhr){
-			xhr.open(method, url, true);
+		try{
+			if ("withCredentials" in xhr){
+				xhr.open(method, url, true);
+			}
+			else if (typeof XDomainRequest !== "undefined"){
+				xhr = new XDomainRequest();
+				xhr.open(method, url);
+			}
+			else {
+				xhr = null;
+			}
+			return xhr;
 		}
-		else if (typeof XDomainRequest !== "undefined"){
-			xhr = new XDomainRequest();
-			xhr.open(method, url);
+		catch (e){
+			console.error("Uh oh!: ", e);
+			console.log("Uh oh!: ", e);
 		}
-		else {
-			xhr = null;
-		}
-		return xhr;
 	}
 };
 
@@ -1201,6 +1214,103 @@ var SettingsUtil = require('./settingsutil.js');
 /** Prepare Reviews and put them into storage.
 */
 var SetReviewsUtil = {
+	reviewActive: false,
+	
+	endReviewSession: function () {
+		document.getElementById('selfStudyForm').reset();
+		this.reviewActive = false;
+	},
+	generateReviewList: function(evt) {
+		//don't ]interfere with an active session
+		
+		if (this.reviewActive){
+			console.log("generateReviewList args", arguments);
+			document.getElementById('user-review').innerHTML = "Review in Progress";
+			return;
+		}
+
+		console.log("generateReviewList()");
+		// function generateReviewList() builds a review session and updates the html menu to show number waiting.
+		var numReviews = 0;
+		var soonest = Infinity;
+		var next;
+
+		var reviewList = [];
+
+		//check to see if there is vocab already in offline storage
+		if (localStorage.getItem('User-Vocab')) {
+			var vocabList = StorageUtil.getVocList();
+			var now = Date.now();
+
+			//for each vocab in storage, get the amount of time vocab has lived
+			vocabList.forEach(function(task, i){
+				var due = task.date + SettingsUtil.srsObject[task.level].duration;
+
+				// if item is unlocked and unburned
+				if (task.level < 9 &&
+					(!task.manualLock ||task.manualLock === "no" || task.manualLock === "n" ||
+					 task.manualLock ==="DB" && !WKSS_Settings.lockDB )){
+					// if it is past review time
+					if(now >= due) {
+						// count vocab up for review
+						numReviews++;
+
+						// add item-meaning object to reviewList
+						// have made this optional for surname lists etc.
+						if (task.meaning[0] !== "") {
+							//Rev_Item object args: prompt, kanji, type, solution, index
+							var revItem = new Rev_Item(task.kanji, task.kanji, "Meaning", task.meaning, i);
+							reviewList.push(revItem);
+						}
+
+						// reading is optional, if there is a reading for the vocab, add its object.
+						if (task.reading[0] !== "") {
+							//Rev_Item object args: prompt, kanji, type, solution, index
+							var revItem2 = new Rev_Item(task.kanji, task.kanji, "Reading", task.reading, i);
+							reviewList.push(revItem2);
+						}
+
+						//if there is a meaning and reading, and reverse flag is true, test reading from english
+						if (task.reading[0] !== "" && task.meaning[0] !== "" && WKSS_Settings.reverse){
+							//Rev_Item object args: prompt, kanji, type, solution, index
+							var revItem3 = new Rev_Item(task.meaning.join(", "), task.kanji, "Reverse", task.reading, i);
+							reviewList.push(revItem3);
+						}
+
+					}
+					else{//unlocked/unburned but not time to review yet
+						console.log("setting soonest");
+						next = due - now;
+						soonest = Math.min(soonest, next);
+					}
+				}//end if item is up for review
+			}, this);// end iterate through vocablist
+		}// end if localStorage
+		if (reviewList.length !== 0){
+			//store reviewList in current session
+			StorageUtil.localSet('User-Review', JSON.stringify(reviewList));
+			console.log(reviewList);
+		}
+		else{
+			console.log("reviewList is empty: "+JSON.stringify(reviewList));
+			document.getElementById('user-review').innerHTML = soonest<Infinity? "Next Review in "+ObjectUtil.ms2str(soonest) : "No Reviews Available";
+		}
+		var strReviews = numReviews.toString();
+
+		/* If you want to do the 42+ thing.
+		 if (numReviews > 42) {
+		 strReviews = "42+"; //hail the crabigator!
+		 }
+		//*/
+
+		// return the number of reviews
+		console.log(numReviews.toString() +" reviews created");
+		if (numReviews > 0){
+			var reviewString = (soonest !== void 0)? "<br/>\r\nMore to come in "+ObjectUtil.ms2str(soonest):"";
+			document.getElementById('user-review').innerHTML = "Review (" + strReviews + ")" + reviewString;
+		}
+	},
+
 	importItemsHandler: function() {
 		var impt = document.getElementById("importArea").value;
         if (impt.length !== 0) {
@@ -1688,6 +1798,7 @@ var EditWindowFunctions = require('./editwindow.js');
 var main = function(){
     "use strict";
 	
+	console.log("Browser: ", navigator.userAgent);
 	// Get the element to attach the menu to
 	var nav = getProtocol() === "https:"? WanikaniDomUtil.getNavBar() : document.body;
 
@@ -1788,7 +1899,7 @@ var main = function(){
 		document.getElementById("importArea").innerText = "";
 		document.getElementById("importStatus").innerText = 'Ready to import..';
 	});
-	addClickEvent(document.getElementById("WKSS-SelfstudyCloseBtn"), endReviewSession);
+	addClickEvent(document.getElementById("WKSS-SelfstudyCloseBtn"), SetReviewsUtil.endReviewSession);
 	addClickEvent(document.getElementById("WrapUpBtn"), function() {
 		var sessionList = StorageUtil.localGet('User-Review')||[];
 			var statsList = StorageUtil.sessionGet('User-Stats')||[];
@@ -1902,97 +2013,6 @@ StorageUtil.initStorage();
 
 //ReviewSessionUtil.shoehornIntoWaniKani();
 var reviewActive;
-var generateReviewList = function(evt) {
-	//don't interfere with an active session
-	
-	if (reviewActive){
-		console.log("generateReviewList args", arguments);
-		document.getElementById('user-review').innerHTML = "Review in Progress";
-		return;
-	}
-
-	console.log("generateReviewList()");
-	// function generateReviewList() builds a review session and updates the html menu to show number waiting.
-	var numReviews = 0;
-	var soonest = Infinity;
-	var next;
-
-	var reviewList = [];
-
-	//check to see if there is vocab already in offline storage
-	if (localStorage.getItem('User-Vocab')) {
-		var vocabList = StorageUtil.getVocList();
-		var now = Date.now();
-
-		//for each vocab in storage, get the amount of time vocab has lived
-		vocabList.forEach(function(task, i){
-			var due = task.date + SettingsUtil.srsObject[task.level].duration;
-
-			// if item is unlocked and unburned
-			if (task.level < 9 &&
-				(!task.manualLock ||task.manualLock === "no" || task.manualLock === "n" ||
-				 task.manualLock ==="DB" && !WKSS_Settings.lockDB )){
-				// if it is past review time
-				if(now >= due) {
-					// count vocab up for review
-					numReviews++;
-
-					// add item-meaning object to reviewList
-					// have made this optional for surname lists etc.
-					if (task.meaning[0] !== "") {
-						//Rev_Item object args: prompt, kanji, type, solution, index
-						var revItem = new Rev_Item(task.kanji, task.kanji, "Meaning", task.meaning, i);
-						reviewList.push(revItem);
-					}
-
-					// reading is optional, if there is a reading for the vocab, add its object.
-					if (task.reading[0] !== "") {
-						//Rev_Item object args: prompt, kanji, type, solution, index
-						var revItem2 = new Rev_Item(task.kanji, task.kanji, "Reading", task.reading, i);
-						reviewList.push(revItem2);
-					}
-
-					//if there is a meaning and reading, and reverse flag is true, test reading from english
-					if (task.reading[0] !== "" && task.meaning[0] !== "" && WKSS_Settings.reverse){
-						//Rev_Item object args: prompt, kanji, type, solution, index
-						var revItem3 = new Rev_Item(task.meaning.join(", "), task.kanji, "Reverse", task.reading, i);
-						reviewList.push(revItem3);
-					}
-
-				}
-				else{//unlocked/unburned but not time to review yet
-					console.log("setting soonest");
-					next = due - now;
-					soonest = Math.min(soonest, next);
-				}
-			}//end if item is up for review
-		}, this);// end iterate through vocablist
-	}// end if localStorage
-	if (reviewList.length !== 0){
-		//store reviewList in current session
-		StorageUtil.localSet('User-Review', JSON.stringify(reviewList));
-		console.log(reviewList);
-	}
-	else{
-		console.log("reviewList is empty: "+JSON.stringify(reviewList));
-		document.getElementById('user-review').innerHTML = soonest<Infinity? "Next Review in "+ObjectUtil.ms2str(soonest) : "No Reviews Available";
-	}
-	var strReviews = numReviews.toString();
-
-	/* If you want to do the 42+ thing.
-	 if (numReviews > 42) {
-	 strReviews = "42+"; //hail the crabigator!
-	 }
-	//*/
-
-	// return the number of reviews
-	console.log(numReviews.toString() +" reviews created");
-	if (numReviews > 0){
-		var reviewString = (soonest !== void 0)? "<br/>\r\nMore to come in "+ObjectUtil.ms2str(soonest):"";
-		document.getElementById('user-review').innerHTML = "Review (" + strReviews + ")" + reviewString;
-	}
-};
-
 var showUserWindow = function() {
 	Array.prototype.forEach.call(document.getElementsByClassName("WKSS"), function(el){el.style.display = '';});
 	document.getElementById("WKSS-user").style.display = '';
@@ -2159,13 +2179,6 @@ var playAudio = function() {
 
 };
 
-var endReviewSession = function () {
-//       document.getElementById("WKSS-selfstudy").style.display = 'none';
-	document.getElementById('selfStudyForm').reset();
-//		document.getElementById("rev-input").value = "";
-	reviewActive = false;
-};
-
 var selfStudyWindow = buildWindow(windowObjects.review);
 
 //-------
@@ -2216,7 +2229,7 @@ var scriptInit = function(element) {
 	// Set up buttons
 	try {
 		if (typeof localStorage !== "undefined") {
-			document.selfStudyMenu = WanikaniDomUtil.getSelfStudyMenu(WKSS_add, WKSS_edit, WKSS_import, WKSS_export, null, WKSS_review, showUserWindow, generateReviewList);
+			document.selfStudyMenu = WanikaniDomUtil.getSelfStudyMenu(WKSS_add, WKSS_edit, WKSS_import, WKSS_export, null, WKSS_review, showUserWindow,  SetReviewsUtil.generateReviewList);
 
 			//provide warning to users trying to use the (incomplete) script.
 			console.log("this script is still incomplete: \r\nIt is provided as is without warranty express or implied\r\nin the hope that you may find it useful.");

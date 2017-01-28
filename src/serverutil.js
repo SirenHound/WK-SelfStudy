@@ -20,22 +20,35 @@ var ServerUtil = {
 					callback(APIkey);
 				}
 			}
-		}.bind(this);
-		xhrk.send();
+		};
+		try{
+			xhrk.send();
+		}
+		catch (e){
+			console.log("An error has occurred: ", e);
+			console.error("An error has occurred: ", e);
+			
+		}
 	},
 	createCORSRequest: function(method, url){
 		var xhr = new XMLHttpRequest();
-		if ("withCredentials" in xhr){
-			xhr.open(method, url, true);
+		try{
+			if ("withCredentials" in xhr){
+				xhr.open(method, url, true);
+			}
+			else if (typeof XDomainRequest !== "undefined"){
+				xhr = new XDomainRequest();
+				xhr.open(method, url);
+			}
+			else {
+				xhr = null;
+			}
+			return xhr;
 		}
-		else if (typeof XDomainRequest !== "undefined"){
-			xhr = new XDomainRequest();
-			xhr.open(method, url);
+		catch (e){
+			console.error("Uh oh!: ", e);
+			console.log("Uh oh!: ", e);
 		}
-		else {
-			xhr = null;
-		}
-		return xhr;
 	}
 };
 

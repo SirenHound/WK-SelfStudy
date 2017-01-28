@@ -3,8 +3,7 @@
   "version": "0.2.1",
   "description": "WaniKani Self Study Plus",
   "main": "src/trunk.js",
-  "scripts": {
-  },
+  "scripts": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/SirenHound/WK-SelfStudy.git"
@@ -19,8 +18,11 @@
   },
   "homepage": "https://github.com/SirenHound/WK-SelfStudy#readme",
   "devDependencies": {
+    "grunt": "^1.0.1",
     "grunt-browserify": "^5.0.0",
+    "grunt-cli": "^1.2.0",
     "grunt-contrib-concat": "^1.0.1",
-    "grunt-contrib-jshint": "^1.1.0"
+    "grunt-contrib-jshint": "^1.1.0",
+    "phantom": "^4.0.0"
   }
 }
