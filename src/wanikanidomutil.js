@@ -1,6 +1,7 @@
 /** Deals specifically with the DOM of Wanikani.com, unlike {@link WanikaniUtil} which deals primarily with the API and application side.
 */
 var WanikaniDomUtil = {
+	buildWindow: require('./buildwindow.js'),
 	
 	addClass: function(el, className){
 	if (el.classList)
@@ -18,7 +19,6 @@ var WanikaniDomUtil = {
 	
 	// Generic selector functions
 	
-	buildWindow: require('./buildwindow.js'),
 	getNavBar: function(){
 		return document.getElementsByClassName('nav')[2];
 	},

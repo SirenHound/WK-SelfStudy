@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        Wanikani Self-Study Plus
+// @name        Wanikani Self-Study Plus RC
 // @namespace   wkselfstudyplus
 // @description Adds an option to add and review your own custom vocabulary
 // @include     *.wanikani.com/*

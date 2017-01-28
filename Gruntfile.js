@@ -5,7 +5,7 @@ module.exports = function(grunt){
 			options: {
 			  stripBanners: true,
 			  banner: '// ==UserScript==\r\n' +
-				'// @name        Wanikani Self-Study Plus\r\n' +
+				'// @name        Wanikani Self-Study Plus RC\r\n' +
 				'// @namespace   wkselfstudyplus\r\n' +
 				'// @description Adds an option to add and review your own custom vocabulary\r\n' +
 				'// @include     *.wanikani.com/*\r\n' +
