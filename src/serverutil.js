@@ -10,15 +10,11 @@ var ServerUtil = {
 				var divElement = document.createElement('div');
 				divElement.innerHTML = xhrk.responseText;
 				
-				var APIfields = Array.prototype.filter.call(divElement.getElementsByTagName("input"), function(elem){
+				var APIkey = Array.prototype.filter.call(divElement.getElementsByTagName("input"), function(elem){
 					return elem.getAttribute("placeholder") === "Key has not been generated";
-				});
-				console.log("APIfields: ", APIfields.toString());
-				console.log("APIfields: ", APIfields instanceof HTMLCollection);
-				if (APIfields.length){
-					var APIkey = APIfields[0].value;
-					callback(APIkey);
-				}
+				})[0].value;
+				console.log(APIkey);
+				callback(APIkey);
 			}
 		};
 		try{
