@@ -5,8 +5,6 @@ var SettingsUtil = require('./settingsutil.js');
 //Constructors
 var Rev_Item = require('./revitem.js');
 
-var WKSS_Settings = StorageUtil.localGet('WKSS-settings');
-
 /** Prepare Reviews and put them into storage.
 */
 var SetReviewsUtil = {
