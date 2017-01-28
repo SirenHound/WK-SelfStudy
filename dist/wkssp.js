@@ -200,7 +200,7 @@ var EditWindowFunctions = {
 };
 
 module.exports = EditWindowFunctions;
-},{"./objectutil.js":8,"./settingsutil.js":12,"./storageutil.js":13}],4:[function(require,module,exports){
+},{"./objectutil.js":8,"./settingsutil.js":13,"./storageutil.js":14}],4:[function(require,module,exports){
 var StorageUtil = require('./storageutil.js');
 var SetReviewsUtil = require('./setreviewsutil.js');
 var WanikaniDomUtil = require('./wanikanidomutil.js');
@@ -277,7 +277,7 @@ module.exports = function(){
 		//--------------------------------------------------------------------------------------------------------
 	}
 };
-},{"./setreviewsutil.js":11,"./storageutil.js":13,"./wanikanidomutil.js":16}],5:[function(require,module,exports){
+},{"./setreviewsutil.js":12,"./storageutil.js":14,"./wanikanidomutil.js":17}],5:[function(require,module,exports){
 module.exports = function(){
 	// {"level":"17","meaning_explanation":"This word consists of kanji with hiragana attached. Because the hiragana ends with an [ja]う[/ja] sound, you know this word is a verb. The kanji itself means [kanji]flourish[/kanji] or [kanji]prosperity[/kanji], so the verb vocab versions of these would be [vocabulary]to flourish[/vocabulary] or [vocabulary]to prosper[/vocabulary].","reading_explanation":"Since this word consists of a kanji with hiragana attached, you can bet that it will use the kun'yomi reading. You didn't learn that reading with this kanji, so here's a mnemonic to help you: What do you flourish at? You're an amazing [vocabulary]soccer[/vocabulary] ([ja]さか[/ja]) player who flourishes and prospers no matter where you go to play this wonderful (but not as good as baseball) sport.","en":"To Flourish, To Prosper","kana":"さかえる","sentences":[["中国には、覚せい剤の生産で栄えていた村がありました。","There was a village in China flourishing on their production of stimulants. "]],"parts_of_speech_ids":["4","19"],"part_of_speech":"Intransitive Verb, Ichidan Verb","audio":"2e194cbf194371cd478480d6ea67769da623e99a.mp3","meaning_note":null,"reading_note":null,"related":[{"kan":"栄","en":"Prosperity, Flourish","slug":"栄"}]}
 
@@ -976,7 +976,7 @@ var MarkingUtil = {
 };
 
 module.exports = MarkingUtil;
-},{"./objectutil.js":8,"./settingsutil.js":12,"./storageutil.js":13,"./wanikanidomutil.js":16}],8:[function(require,module,exports){
+},{"./objectutil.js":8,"./settingsutil.js":13,"./storageutil.js":14,"./wanikanidomutil.js":17}],8:[function(require,module,exports){
 var ObjectUtil = {
     /** Validates a task object
 	* @param {Task} add - The Task being verified
@@ -1165,6 +1165,16 @@ var reviewSessionUtil = {
 	}		
 };
 },{}],10:[function(require,module,exports){
+var Rev_Item = function(prompt, kanji, type, solution, index){
+	this.prompt = prompt;
+	this.kanji = kanji;
+	this.type = type;
+	this.solution = solution;
+	this.index = index;
+};
+
+module.exports = Rev_Item;
+},{}],11:[function(require,module,exports){
 var ServerUtil = {
 	//Make asyncronous call for the API of the currently logged in user, ask for confirmation, don't be creepy :P
 	getLoggedInUserAPI: function(callback){
@@ -1220,10 +1230,13 @@ var ServerUtil = {
 };
 
 module.exports = ServerUtil;
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var StorageUtil = require('./storageutil.js');
 var ObjectUtil = require('./objectutil.js');
 var SettingsUtil = require('./settingsutil.js');
+
+//Constructors
+var Rev_Item = require('./revitem.js');
 
 /** Prepare Reviews and put them into storage.
 */
@@ -1616,7 +1629,7 @@ var SetReviewsUtil = {
 };
 
 module.exports = SetReviewsUtil;
-},{"./objectutil.js":8,"./settingsutil.js":12,"./storageutil.js":13}],12:[function(require,module,exports){
+},{"./objectutil.js":8,"./revitem.js":10,"./settingsutil.js":13,"./storageutil.js":14}],13:[function(require,module,exports){
 var hrs = 60*60*1000;
 var days = 24*hrs;
 var weeks = 7*days;
@@ -1644,7 +1657,7 @@ var SettingsUtil = {
 };
 
 module.exports = SettingsUtil;
-},{"./storageutil.js":13}],13:[function(require,module,exports){
+},{"./storageutil.js":14}],14:[function(require,module,exports){
 var standardStyleGet = "font-weight: bold; color: #5599AA";
 var italicStyleGet = "font-style: italic; color: #5599AA";
 var standardStyleSet = "font-weight: bold; color: #559933";
@@ -1767,7 +1780,7 @@ var StorageUtil = {
 };
 
 module.exports = StorageUtil;
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 // shut up JSHint
 /* jshint jquery: true, expr: true, indent:2 */
 /* global window, wanakana, XDomainRequest */
@@ -2202,13 +2215,6 @@ var openInNewTab = function(url) {
 };
 
 
-var Rev_Item = function(prompt, kanji, type, solution, index){
-	this.prompt = prompt;
-	this.kanji = kanji;
-	this.type = type;
-	this.solution = solution;
-	this.index = index;
-};
 
 
 var resultsWindow = buildWindow(windowObjects.results);
@@ -2313,7 +2319,7 @@ switch(getProtocol()){
 
 
 
-},{"./buildnode.js":1,"./buildwindow.js":2,"./editwindow.js":3,"./handleAddClick.js":4,"./importutil.js":6,"./markingutil.js":7,"./objectutil.js":8,"./reviewsessionutil.js":9,"./serverutil":10,"./setreviewsutil.js":11,"./settingsutil.js":12,"./storageutil.js":13,"./userclass.js":15,"./wanikanidomutil.js":16,"./wanikaniutil.js":17,"./windowobjects.js":19,"./wkstyle.js":20}],15:[function(require,module,exports){
+},{"./buildnode.js":1,"./buildwindow.js":2,"./editwindow.js":3,"./handleAddClick.js":4,"./importutil.js":6,"./markingutil.js":7,"./objectutil.js":8,"./reviewsessionutil.js":9,"./serverutil":11,"./setreviewsutil.js":12,"./settingsutil.js":13,"./storageutil.js":14,"./userclass.js":16,"./wanikanidomutil.js":17,"./wanikaniutil.js":18,"./windowobjects.js":20,"./wkstyle.js":21}],16:[function(require,module,exports){
 var ServerUtil = require('./serverutil.js');
 var ObjectUtil = require('./objectutil.js');
 
@@ -2344,10 +2350,11 @@ User.prototype = {
 };
 
 module.exports = User;
-},{"./objectutil.js":8,"./serverutil.js":10}],16:[function(require,module,exports){
+},{"./objectutil.js":8,"./serverutil.js":11}],17:[function(require,module,exports){
 /** Deals specifically with the DOM of Wanikani.com, unlike {@link WanikaniUtil} which deals primarily with the API and application side.
 */
 var WanikaniDomUtil = {
+	buildWindow: require('./buildwindow.js'),
 	
 	addClass: function(el, className){
 	if (el.classList)
@@ -2365,7 +2372,6 @@ var WanikaniDomUtil = {
 	
 	// Generic selector functions
 	
-	buildWindow: require('./buildwindow.js'),
 	getNavBar: function(){
 		return document.getElementsByClassName('nav')[2];
 	},
@@ -2504,7 +2510,7 @@ var WanikaniDomUtil = {
 };
 
 module.exports = WanikaniDomUtil;
-},{"./buildwindow.js":2}],17:[function(require,module,exports){
+},{"./buildwindow.js":2}],18:[function(require,module,exports){
 var ObjectUtil = require('./objectutil.js');
 var StorageUtil = require('./storageutil.js');
 var ServerUtil = require('./serverutil.js');
@@ -2649,7 +2655,7 @@ var WanikaniUtil = {
 };
 
 module.exports = WanikaniUtil;
-},{"./hijackrequests.js":5,"./objectutil.js":8,"./serverutil.js":10,"./setreviewsutil.js":11,"./storageutil.js":13}],18:[function(require,module,exports){
+},{"./hijackrequests.js":5,"./objectutil.js":8,"./serverutil.js":11,"./setreviewsutil.js":12,"./storageutil.js":14}],19:[function(require,module,exports){
 // Window Configs
 module.exports = {
 	add:{height: "300px", width: "300px"},
@@ -2658,7 +2664,7 @@ module.exports = {
 	study:{height: "auto", width: "600px"}, //height : auto
 	result:{height: "500px", width: "700px"}
 };
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 var windowObjects = {
 	user: {
 		id: "WKSS-user",
@@ -3038,7 +3044,7 @@ var windowObjects = {
 };
 
 module.exports = windowObjects;
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 /* jshint multistr: true */
 // Config for window sizes in pixels
 var windowConfig = require('./windowconfig.js');
@@ -3313,4 +3319,4 @@ cssObjectToString('#rev-input', {
 //----
 module.exports = classWKSS;
 //module.exports = wkstyleCSS;
-},{"./windowconfig.js":18}]},{},[14]);
+},{"./windowconfig.js":19}]},{},[15]);

@@ -2,6 +2,9 @@ var StorageUtil = require('./storageutil.js');
 var ObjectUtil = require('./objectutil.js');
 var SettingsUtil = require('./settingsutil.js');
 
+//Constructors
+var Rev_Item = require('./revitem.js');
+
 /** Prepare Reviews and put them into storage.
 */
 var SetReviewsUtil = {
