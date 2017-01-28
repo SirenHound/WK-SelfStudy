@@ -737,7 +737,7 @@ var MarkingUtil = {
 	* @param {number}
 	* @param {string}
 	*/
-	submitAnswer: function(reviewList, item, rnd, input){
+	submitAnswer: function(reviewList, item, rnd, input, localresults){
 		//was the input correct?
 		var correct = MarkingUtil.inputCorrect(input);
 		
@@ -857,7 +857,7 @@ var MarkingUtil = {
 				
 				console.log("input:", input);
 				console.log("item:", item);
-				MarkingUtil.submitAnswer(reviewList, item, rnd, input);
+				MarkingUtil.submitAnswer(reviewList, item, rnd, input, localresults);
 				console.groupEnd();
 				
 			}
@@ -1237,6 +1237,8 @@ var SettingsUtil = require('./settingsutil.js');
 
 //Constructors
 var Rev_Item = require('./revitem.js');
+
+var WKSS_Settings = StorageUtil.localGet('WKSS-settings');
 
 /** Prepare Reviews and put them into storage.
 */
