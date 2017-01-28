@@ -1,16 +1,9 @@
-var standardStyleGet = "font-weight: bold; color: #5599AA";
-var italicStyleGet = "font-style: italic; color: #5599AA";
-var standardStyleSet = "font-weight: bold; color: #559933";
-var italicStyleSet = "font-style: italic; color: #559933";
-
 var StorageUtil = {
-	VOCAB_LABEL: "User-Vocab",
-	API_LABEL: "Wanikani-API",
 	/** Initialise User-Vocab
 	*/
 	initStorage: function(){
-		if (!this.localGet(this.VOCAB_LABEL)){
-			this.localSet(this.VOCAB_LABEL, []);
+		if (!this.localGet("User-Vocab")){
+			this.localSet("User-Vocab", []);
 		}
 	},
 	/** Handle the users API key.
@@ -18,7 +11,7 @@ var StorageUtil = {
 	* @returns {string} the users API key as supplied and stored, or in the case of "YOUR_API_HERE" being passed, the stored key.
 	*/
     getSetApi: function(APIkey){
-        var storedAPI = this.localGet(this.API_LABEL);
+        var storedAPI = localStorage.getItem('Wanikani-API');
         if (!APIkey || APIkey === "YOUR_API_HERE"){
             if (storedAPI !== null && storedAPI !== "undefined"){
                 APIkey = storedAPI;
@@ -34,13 +27,11 @@ var StorageUtil = {
     },
 	saveUserApi: function(APIkey){
 		if (APIkey){
-			this.localSet(this.API_LABEL, APIkey);
+			this.localSet("Wanikani-API", APIkey);
 		}
 	},
-	/**
-	*/
+
 	parseString: function(strObj){
-		console.assert("string" === typeof strObj, "non-string passed to parseString", strObj);
         //avoids duplication of code for sesssionGet and localGet
         var obj;
         try {
@@ -48,20 +39,21 @@ var StorageUtil = {
             console.log("Variable is of type " + typeof obj);
         }
 		catch(e){
-			console.error(strObj + " is an ordinary string that cannot be parsed.");
-			obj = strObj;
+            if (e.name === "SyntaxError"){
+                console.log(strObj + " is an ordinary string that cannot be parsed.");
+                obj = strObj;
+            }
+			else{
+                console.error("Could not parse " + strObj + ". Error: ", e);
+            }
         }
         return obj;
     },
 	/**
 	*/
 	localGet: function(strName){
-		var data = localStorage.getItem(strName);
-		var result = data && this.parseString(data);
-		console.groupCollapsed("%cRetrieving %c"+strName+" %cfrom local storage", standardStyleGet, italicStyleGet, standardStyleGet);
-		console.info(typeof result, result);
-		console.groupEnd();
-		return result;
+        var strObj = localStorage.getItem(strName);
+        return this.parseString(strObj);
     },
 	localRemove: function(strName){
 		if (localStorage.getItem(strName) !== null){
@@ -77,10 +69,6 @@ var StorageUtil = {
 	* @requires JSON
 	*/
 	localSet: function(strName, obj){
-		console.groupCollapsed("%cStoring %c"+strName+" %cinto local storage", standardStyleSet, italicStyleSet, standardStyleSet);
-		console.info(typeof obj, obj);
-		console.groupEnd();
-
         localStorage.setItem(strName, typeof obj === "string"? obj : JSON.stringify(obj));
     },
 	/** Only sets strings and objects into browser storage if they are not already there
@@ -89,7 +77,7 @@ var StorageUtil = {
 	*/
 	localSetFirstTime: function(strName, obj){
 		if (!this.localGet(strName)){
-			this.localSet(strName, obj);
+			localStorage.setItem(strName, typeof obj === "string"? obj : JSON.stringify(obj));
 		}
     },
 	/**
@@ -105,17 +93,20 @@ var StorageUtil = {
 	sessionSet: function(strName, obj){
         sessionStorage.setItem(strName, typeof obj === "string"? obj : JSON.stringify(obj));
     },
-	/** Gets the list of user defined vocabulary items
+	/**
 	*/
 	getVocList: function(){
-        var vocList = this.localGet(this.VOCAB_LABEL);
-        vocList.forEach(function(item, i){
-			item.i = i; //set index for item (->out)
-        }, this);
+        var vocList = JSON.parse(localStorage.getItem('User-Vocab'))||[];
+        if (vocList){
+            var v=vocList.length;
+            while(v--){
+                vocList[v].i = v; //set index for item (->out)
+            }
+        }
         return vocList;
     },
 	setVocList: function(vocList){
-		this.localSet(this.VOCAB_LABEL, vocList);
+		this.localSet('User-Vocab', vocList);
 	}
 };
 

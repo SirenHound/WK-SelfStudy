@@ -1,7 +1,6 @@
 var StorageUtil = require('./storageutil.js');
 var ObjectUtil = require('./objectutil.js');
 var SettingsUtil = require('./settingsutil.js');
-var WanikaniDomUtil = require('./wanikanidomutil.js');
 
 var submit = true;
 var MarkingUtil = {
@@ -92,10 +91,8 @@ var MarkingUtil = {
         //    wanakana.bind/unbind
 
         var rnd = Math.floor(Math.random()*reviewList.length);
-		console.log("next random number", rnd);
         var item = reviewList[rnd];
-		console.log("next item: ", item);
-        //StorageUtil.localSet('WKSS-item', item);
+        StorageUtil.localSet('WKSS-item', item);
         StorageUtil.localSet('WKSS-rnd', rnd);
 		
 		MarkingUtil.setTask(item);
@@ -105,10 +102,11 @@ var MarkingUtil = {
 	/** Populate the review window with the given task
 	*/
 	setTask: function(item){
-		var reviewList = StorageUtil.localGet('User-Review');
-		document.getElementById("RevNum").innerText = reviewList.length;
-		
-		document.getElementById('rev-kanji').innerHTML = item.prompt;
+		var statsList = StorageUtil.localGet('User-Stats');
+        if (statsList){
+            $("#RevNum").innerHtml = statsList.length;
+        }
+        document.getElementById('rev-kanji').innerHTML = item.prompt;
         document.getElementById('rev-type').innerHTML = item.type;
         var typeBgColor = 'grey';
         if (item.type.toLowerCase() == 'meaning'){
@@ -119,27 +117,28 @@ var MarkingUtil = {
             typeBgColor = 'orange';
         }
         document.getElementById('wkss-type').style.backgroundColor = typeBgColor;
-        WanikaniDomUtil.addClass(document.getElementById("rev-solution"), "info");
+        $("#rev-solution").removeClass("info");
         document.getElementById('rev-solution').innerHTML = item.solution;
         document.getElementById('rev-index').innerHTML = item.index;
 
         //initialise the input field
-        document.getElementById("rev-input").focus();
-		WanikaniDomUtil.removeClass(document.getElementById("rev-input"), "caution");
-		WanikaniDomUtil.removeClass(document.getElementById("rev-input"), "error");
-        WanikaniDomUtil.removeClass(document.getElementById("rev-input"), "correct");
-        document.getElementById("rev-input").value = "";
+        $("#rev-input").focus();
+        $("#rev-input").removeClass("caution");
+        $("#rev-input").removeClass("error");
+        $("#rev-input").removeClass("correct");
+        $("#rev-input").val("");
 
         //check for alphabet letters and decide to bind or unbind wanakana
         if (item.solution[0].match(/[a-zA-Z]+/i)) {
             wanakana.unbind(document.getElementById('rev-input'));
-            document.getElementById("rev-input").setAttribute('placeholder','Your response');
-            document.getElementById("rev-input").setAttribute('lang','en');
+            $('#rev-input').attr('placeholder','Your response');
+            $('#rev-input').attr('lang','en');
+
         }
         else {
             wanakana.bind(document.getElementById('rev-input'));
-			document.getElementById("rev-input").setAttribute('placeholder','答え');
-			document.getElementById("rev-input").setAttribute('lang','ja');
+            $('#rev-input').attr('placeholder','答え');
+            $('#rev-input').attr('lang','ja');
         }
 	},
 	markAnswer: function(item) {
@@ -236,10 +235,9 @@ var MarkingUtil = {
 	* @param {number}
 	* @param {string}
 	*/
-	submitAnswer: function(reviewList, item, rnd, input){
+	submitAnswer: function(reviewList, item, rnd, input, statsList){
 		//was the input correct?
 		var correct = MarkingUtil.inputCorrect(input);
-		
 
 		//was the input forgiven?
 		var forgiven = (item.forgive.indexOf(input) !== -1);
@@ -249,50 +247,45 @@ var MarkingUtil = {
 		//disable input after submission
 		//document.getElementById('rev-input').disabled = true;
 
+		
+		
+		//remove from sessionList if correct
 		if (correct) {
 			//highlight in (default) green
-			WanikaniDomUtil.addClass(document.getElementById("rev-input"), "correct");
+			$("#rev-input").addClass("correct");
 			//show answer
-			WanikaniDomUtil.addClass(document.getElementById("rev-solution"), "info");
+			$("#rev-solution").addClass("info");
 
 			console.log("correct answer");
 			if (reviewList !== null){
 				var oldlen = reviewList.length;
 
-				//save the result 
-				var results = StorageUtil.localGet("User-Stats");
-				results.push(item);
-				localresults.push(item);
-				
-				
-				//--
-				StorageUtil.localSet("User-Stats", results);
 				reviewList.splice(rnd, 1);
+				console.log("sessionList.length: "+ oldlen +" -> "+reviewList.length);
 
-				//replace shorter (by one) reviewList to session
+				//replace shorter (by one) sessionList to session
 				if (reviewList.length !== 0) {
-					console.info("reviewList.length: "+ reviewList.length);
+					console.log("reviewList.length: "+ reviewList.length);
 					StorageUtil.localSet('User-Review', reviewList);
 				}
 				else {
 					//reveiw over, delete sessionlist from session
 					StorageUtil.localRemove('User-Review');
 				}
-			}
-			else{
+			}else{
 				console.error("Error: no review session found");
 			}
 		}
 		else if (forgiven){
-			WanikaniDomUtil.addClass(document.getElementById("rev-input"), "caution");
-		     console.log(input +" has been forgiven. "+item.type);
+			$("#rev-input").addClass("caution");
+			//     console.log(input +" has been forgiven. "+item.type);
 			//   return;
 		}
 		else{
 			//highight in red
-			WanikaniDomUtil.addClass(document.getElementById("rev-input"), "error");
+			$("#rev-input").addClass("error");
 			//show answer
-			WanikaniDomUtil.addClass(document.getElementById("rev-solution"), "info");
+			$("#rev-solution").addClass("info");
 			console.log("wrong answer");
 		}
 
@@ -300,28 +293,28 @@ var MarkingUtil = {
 
 		StorageUtil.localSet(item.index, item);
 
-/*
+
 		var found = false;
 
-		if (reviewList){
-			var i = reviewList.length;
+		if (statsList){
+			//statsList.forEach(function(v, i, statsList){
+			var i = statsList.length;
 			while(i--){
-				if (reviewList[i].index == item.index) {
-					reviewList[i] = item;								//replace item if it exists
+				if (statsList[i].index == item.index) {
+					statsList[i] = item;								//replace item if it exists
 					found = true;
 				}
 			}
 			if(found){
-				reviewList = ObjectUtil.saveToSortedList(reviewList,item);
+				statsList = ObjectUtil.saveToSortedList(statsList,item);
 			}
 
 		}
 		else {
-			reviewList = [item];
+			statsList = [item];
 		}
 
-		StorageUtil.localSet("User-Review", JSON.stringify(reviewList));
-*/
+		StorageUtil.localSet("User-Stats", JSON.stringify(statsList));
 		//playAudio();
 
 		//answer submitted, next 'enter' proceeds with script
@@ -331,53 +324,55 @@ var MarkingUtil = {
 		//check if key press was 'enter' (keyCode 13) on the way up
 		//and keystate true (answer being submitted)
 		//and cursor is focused in reviewfield
-		var reviewList = StorageUtil.localGet('User-Review')||[];
-		var localresults = [];
-		console.log("reviewList (keyuphandler) types", reviewList.map(function(a){return a.type;}));
-		// No nulls or undefineds thanks
-		//reviewList = reviewList.filter(function(item) {return item;});
 		if (evt.keyCode == 13){
+			var reviewList = StorageUtil.localGet('User-Review')||[];
+			var statsList = StorageUtil.localGet("User-Stats")||[];
+			statsList = statsList.filter(function(item) {return item;});
+		
 			if (submit) {
-				console.group("Answer being submitted.");
-				var input = document.getElementById("rev-input").value.trim();
+				var input = $("#rev-input").val().trim();
 				//check for input, do nothing if none
 				if(input.length === 0){
-					console.log("input was empty, abort submission");
-					console.groupEnd();
 					return;
 				}
 
 				var rnd = StorageUtil.localGet('WKSS-rnd')||0;
 
-				var item = reviewList[rnd]; //StorageUtil.localGet('WKSS-item');
+				var item = StorageUtil.localGet('WKSS-item');
 
 				//-- starting implementation of forgiveness protocol
 				item.forgive = [];//"ゆるす"]; //placeholder (許す to forgive)
 				
-				console.log("input:", input);
-				console.log("item:", item);
-				MarkingUtil.submitAnswer(reviewList, item, rnd, input);
-				console.groupEnd();
-				
+				// reviewList[rnd] === item
+				if (item === null){
+					//take the item out of the review
+					reviewList.splice(rnd, 1);
+				}
+				else{
+					MarkingUtil.submitAnswer(reviewList, item, rnd, input, statsList);
+				}
 			}
 			else {
 				console.log("keystat = " + submit);
 
-				//Repopulate reviewList
-				reviewList = reviewList.length? reviewList : StorageUtil.localGet('User-Review')||[];
-
 				//there are still more reviews in session?
-				if (reviewList.length !== 0) {
+				if (reviewList.length === 0 && StorageUtil.localGet('User-Review')) {
 					setTimeout(function () {
-						console.groupCollapsed("%cReview session continues...[", "color:#889944");
+						console.groupCollapsed("%cReview session over, Timeout function showing results: [", "color:#889944");
+						console.info("arguments", arguments);
+						//Repopulate reviewList
+						reviewList = StorageUtil.localGet('User-Review')||[];
 
 						//cue up first remaining review
-						submit = true;
 						MarkingUtil.nextReview(reviewList);
+//----
+						if (reviewList.length === 0){
+							StorageUtil.localRemove("User-Review");
+						}
 
 						//         document.getElementById('rev-input').disabled = true;
-						WanikaniDomUtil.removeClass(document.getElementById("rev-solution"), "info");
-						document.getElementById("WKSS-selfstudy").style.display = '';//.fadeIn('fast');
+						$("#rev-solution").removeClass("info");
+						$("#WKSS-selfstudy").hide().fadeIn('fast');
 						console.groupEnd();
 						console.log("%c]", "color:#889944");
 					}, 1);
@@ -387,20 +382,17 @@ var MarkingUtil = {
 					setTimeout(function (evt) {
 						console.groupCollapsed("Review session over, Timeout function showing results: [");
 						console.info("arguments", arguments);
-						document.getElementById("WKSS-selfstudy").style.display = 'none';
-						
-						StorageUtil.localRemove("User-Review");
-						
-			//document.getElementById('rev-input').disabled = false;
-						WanikaniDomUtil.removeClass(document.getElementById("rev-solution"), "info");
+						$("#WKSS-selfstudy").hide();
+						//document.getElementById('rev-input').disabled = false;
+						$("#rev-solution").removeClass("info");
 						console.log("showResults");
 						
 						var statsList = StorageUtil.localGet('User-Stats')||[];
+						sessionStorage.clear();
+
+						MarkingUtil.showResults(statsList);
 						
-			//			MarkingUtil.showResults(statsList);
-						MarkingUtil.showResults(localresults);
-						
-						document.getElementById("WKSS-resultwindow").style.display = '';
+						$("#WKSS-resultwindow").show();
 						console.log("showResults completed");
 
 						//*/  //clear session
@@ -410,6 +402,7 @@ var MarkingUtil = {
 						console.log("]");
 					}, 1);
 				}
+				submit = true;
 			}
 		}
 	},
@@ -430,7 +423,7 @@ var MarkingUtil = {
 	/** Compares input to solutions to see if it is correct or close enough.
 	*/
 	inputCorrect: function(input, solution) {
-        input = input || document.getElementById("rev-input").value.toLowerCase().trim();
+        input = input || $("#rev-input").val().toLowerCase().trim();
         solution = solution || document.getElementById('rev-solution').innerHTML.split(/[,、]+\s*/);
         var correctCharCount = 0;
         var returnvalue = false;

@@ -2,9 +2,13 @@ var StorageUtil = require('./storageutil.js');
 var ObjectUtil = require('./objectutil.js');
 var SettingsUtil = require('./settingsutil.js');
 
+<<<<<<< HEAD
 //Constructors
 var Rev_Item = require('./revitem.js');
 
+=======
+console.log("Utils", ObjectUtil[0], SettingsUtil[0],StorageUtil[0], require);
+>>>>>>> parent of 306c955... Removing jQuery dependencies
 /** Prepare Reviews and put them into storage.
 */
 var SetReviewsUtil = {
@@ -106,12 +110,12 @@ var SetReviewsUtil = {
 	},
 
 	importItemsHandler: function() {
-		var impt = document.getElementById("importArea").value;
-        if (impt.length !== 0) {
+        if ($("#importArea").val().length !== 0) {
             try {
-                var add = JSON.parse(impt.toLowerCase());
+                var add = JSON.parse($("#importArea").val().toLowerCase());
+                alert(JSON.stringify(add));
                 if (setReviewsUtil.checkAdd(add)) {
-                    document.getElementById("importStatus").appendChild(document.createTextNode("No valid input (duplicates?)!"));
+                    $("#importStatus").text("No valid input (duplicates?)!");
                     return;
                 }
 
