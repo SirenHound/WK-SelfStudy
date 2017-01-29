@@ -12,7 +12,7 @@
 // @run-at      document-end
 // @grant       none
 // ==/UserScript==
-/*! wkselfstudy - v0.2.1 - 2017-01-28 */(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+/*! wkselfstudy - v0.2.1 - 2017-01-29 */(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 /** Builds a node element with an id and className and other attributes if provided
 * @param {string} type - The type of element to create ('div', 'p', etc...)
 * @param {object} [options]
@@ -1824,12 +1824,14 @@ var UserClass = require('./userclass.js');
 // Make a display window class for all inputs, this is an instance of such.
 var EditWindowFunctions = require('./editwindow.js');
 
+var isBeingRunLocally = window.document.location.protocol === "file:";
+
 var main = function(){
     "use strict";
 	
 	console.log("Browser: ", navigator.userAgent);
 	// Get the element to attach the menu to
-	var nav = getProtocol() === "https:"? WanikaniDomUtil.getNavBar() : document.body;
+	var nav = window.document.location.protocol === "https:" ? WanikaniDomUtil.getNavBar() : document.body;
 
 	var mockjax = document.createElement("script");
 	mockjax.setAttribute('src', 'https://cdn.jsdelivr.net/jquery.mockjax/1.6.1/jquery.mockjax.js');
@@ -1839,6 +1841,7 @@ var main = function(){
 	wanakana.setAttribute('src', 'https://rawgit.com/WaniKani/WanaKana/master/lib/wanakana.js');
 	wanakana.setAttribute('type', 'text/javascript');
 	
+
 	var wanakanaLocal = document.createElement("script");
 	wanakanaLocal.setAttribute('src', 'wanakana.js');
 	wanakanaLocal.setAttribute('type', 'text/javascript');
@@ -1848,7 +1851,9 @@ var main = function(){
 	}
 	document.head.insertBefore(wanakana, document.head.firstChild);
 	
-	document.head.insertBefore(wanakanaLocal, document.head.firstChild);
+	if (window.document.location.protocol === "file:") {
+	    document.head.insertBefore(wanakanaLocal, document.head.firstChild);
+	}
 	
 	// TODO make sure selfStudyMenu has been built before adding
 	nav.appendChild(document.selfStudyMenu);
@@ -2278,29 +2283,23 @@ var scriptInit = function(element) {
 console.info(document.readyState);
 console.log("adding DOM listener", document.readyState);
 // Check for file API support.
-		var nav = WanikaniDomUtil.getNavBar();
 if (window.File && window.FileReader && window.FileList && window.Blob) {
-
+    console.info("File APIs supported.");
 }
 else {
-	alert('The File APIs are not fully supported in this browser.');
+	throw 'The File APIs are not fully supported in this browser.';
 }
 
 /** Start the script
 */
-//unless the user navigated from the review directory, they are unlikely to have unlocked any kanji
-var noNewStuff = /^https:\/\/.*\.wanikani\.com\/.*/.test(document.referrer)&&!(/https:\/\/.*\.wanikani\.com\/review.*/.test(document.referrer));
 
-var getProtocol = function(){
-	return /^.*?:/.exec(window.location.href)[0];
-};
-var usingHTTPS = getProtocol() === "https:"; // /^https:/.test(window.location.href);
-console.info(usingHTTPS, window.location.href);
-//if (usingHTTPS){
-switch(getProtocol()){
+switch (window.document.location.protocol) {
 	case "https:":
-		console.info("WaniKani Self-Study Plus is about to start");
-		if (noNewStuff){  //Don't waste time if user is browsing site
+	    console.info("WaniKani Self-Study Plus is about to start");
+	    // If the user came from another page on WaniKani, they are unlikely to have unlocked any kanji unless that page was the review page
+
+	    var noNewStuff = /^https:\/\/.*\.wanikani\.com\/.*/.test(document.referrer) && !(/https:\/\/.*\.wanikani\.com\/review.*/.test(document.referrer));
+        if (noNewStuff){  //Don't waste time if user is browsing site
 			console.log("User is unlikely to have new kanji unlocked");
 		}
 		else{
