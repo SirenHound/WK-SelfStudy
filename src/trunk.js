@@ -263,7 +263,7 @@ StorageUtil.initStorage();
 //ReviewSessionUtil.shoehornIntoWaniKani();
 var reviewActive;
 var showUserWindow = function() {
-	Array.prototype.forEach.call(document.getElementsByClassName("WKSS"), function(el){el.style.display = '';});
+	Array.prototype.forEach.call(document.getElementsByClassName("WKSS"), function(el){el.style.display = 'none';});
 	document.getElementById("WKSS-user").style.display = '';
 };
 

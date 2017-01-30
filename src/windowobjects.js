@@ -59,7 +59,10 @@ var windowObjects = {
 			},
 			{ tag: 'input', 
 				id: "addKanji", 
-				other: {type: "text", placeholder: "Enter 漢字, ひらがな or カタカナ"}
+				other: {
+				    'data-lpignore': true,
+				    type: "text", placeholder: "Enter 漢字, ひらがな or カタカナ"
+				}
 			},
 			{ tag: 'input',
 				id: "addReading",
@@ -111,6 +114,7 @@ var windowObjects = {
 					type: "text",
 					name: "",
 					size: "40",
+					'data-lpignore': true,
 					placeholder: "Select vocab, click edit, change and save!"
 				},
 				id: "editItem"
