@@ -2093,7 +2093,7 @@ var windowObjects = require('./windowobjects.js');
 
 var autoFillUser = function(evt){
 	console.info(user.loggedInUser);
-			document.getElementById("zxuserApi").val(user.loggedInUser._api);
+			document.getElementById("userApi").val(user.loggedInUser._api);
 	StorageUtil.saveUserApi(user.loggedInUser._api);
 	document.getElementById("WKSS-username").append(user.loggedInUser.getUsername());
 };
