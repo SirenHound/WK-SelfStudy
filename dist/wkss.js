@@ -1552,14 +1552,15 @@ var SetReviewsUtil = {
             var componentList = this.getCompKanji(srsitem, kanjiList);
             // eg: componentList = getCompKanji("折り紙", kanjiList);
             // componentList = [{"kanji": "折", "srs": "guru"}, {"kanji": "紙", "srs": "apprentice"}]
-            var isLocked = componentList.some(function(component){
+            componentList.some(function(component){
                 //look for locked kanji in list
                 if (component.srs == "apprentice" ||
                     component.srs == "noServerResp"||
                     component.srs == "unreached"
                    ){
                     locked = "yes";
-					return true; // Ends 'some' loop, locked kanji overrides everything.
+                    console.info("component: ", component);
+					return true; // Ends 'some' loop, one locked component locks the whole item
                 }
 				//DB locks get special state
                 else if (component.srs == "noMatchWK" ||
@@ -2531,15 +2532,14 @@ var WanikaniUtil = {
 	onStateChangeHandler: function() {
 		if (this.readyState == 4){
 			var kanjiList = WanikaniUtil.handleReadyStateFour(this, this.requestedItem);
-
+			console.log("first kanji in list's srs", kanjiList[0].srs);
 			if (this.requestedItem === 'kanji'){
 				StorageUtil.localSet('User-KanjiList', kanjiList);
-				console.log("kanjiList from server", kanjiList);
 				//update locks in localStorage 
 				//pass kanjilist into this function
 				//(don't shift things through storage unecessarily)
 //--
-				SetReviewsUtil.refreshLocks();
+				SetReviewsUtil.refreshLocks(kanjiList);
 			}
 			else{
 				var v = kanjiList.length;
@@ -2574,7 +2574,7 @@ var WanikaniUtil = {
                             //update locks in localStorage 
                             //pass kanjilist into this function
                             //(don't shift things through storage unecessarily)
-                            SetReviewsUtil.refreshLocks();
+                            SetReviewsUtil.refreshLocks(kanjiList);
                         }
 						else{
                             var v = kanjiList.length;

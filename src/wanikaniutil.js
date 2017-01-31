@@ -10,15 +10,14 @@ var WanikaniUtil = {
 	onStateChangeHandler: function() {
 		if (this.readyState == 4){
 			var kanjiList = WanikaniUtil.handleReadyStateFour(this, this.requestedItem);
-
+			console.log("first kanji in list's srs", kanjiList[0].srs);
 			if (this.requestedItem === 'kanji'){
 				StorageUtil.localSet('User-KanjiList', kanjiList);
-				console.log("kanjiList from server", kanjiList);
 				//update locks in localStorage 
 				//pass kanjilist into this function
 				//(don't shift things through storage unecessarily)
 //--
-				SetReviewsUtil.refreshLocks();
+				SetReviewsUtil.refreshLocks(kanjiList);
 			}
 			else{
 				var v = kanjiList.length;
@@ -53,7 +52,7 @@ var WanikaniUtil = {
                             //update locks in localStorage 
                             //pass kanjilist into this function
                             //(don't shift things through storage unecessarily)
-                            SetReviewsUtil.refreshLocks();
+                            SetReviewsUtil.refreshLocks(kanjiList);
                         }
 						else{
                             var v = kanjiList.length;

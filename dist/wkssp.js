@@ -12,7 +12,7 @@
 // @run-at      document-end
 // @grant       none
 // ==/UserScript==
-/*! wkselfstudy - v0.2.1 - 2017-01-31 */(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+/*! wkselfstudy - v0.2.1 - 2017-02-01 */(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 /** Builds a node element with an id and className and other attributes if provided
 * @param {string} type - The type of element to create ('div', 'p', etc...)
 * @param {object} [options]
@@ -1566,14 +1566,15 @@ var SetReviewsUtil = {
             var componentList = this.getCompKanji(srsitem, kanjiList);
             // eg: componentList = getCompKanji("折り紙", kanjiList);
             // componentList = [{"kanji": "折", "srs": "guru"}, {"kanji": "紙", "srs": "apprentice"}]
-            var isLocked = componentList.some(function(component){
+            componentList.some(function(component){
                 //look for locked kanji in list
                 if (component.srs == "apprentice" ||
                     component.srs == "noServerResp"||
                     component.srs == "unreached"
                    ){
                     locked = "yes";
-					return true; // Ends 'some' loop, locked kanji overrides everything.
+                    console.info("component: ", component);
+					return true; // Ends 'some' loop, one locked component locks the whole item
                 }
 				//DB locks get special state
                 else if (component.srs == "noMatchWK" ||
@@ -2545,15 +2546,14 @@ var WanikaniUtil = {
 	onStateChangeHandler: function() {
 		if (this.readyState == 4){
 			var kanjiList = WanikaniUtil.handleReadyStateFour(this, this.requestedItem);
-
+			console.log("first kanji in list's srs", kanjiList[0].srs);
 			if (this.requestedItem === 'kanji'){
 				StorageUtil.localSet('User-KanjiList', kanjiList);
-				console.log("kanjiList from server", kanjiList);
 				//update locks in localStorage 
 				//pass kanjilist into this function
 				//(don't shift things through storage unecessarily)
 //--
-				SetReviewsUtil.refreshLocks();
+				SetReviewsUtil.refreshLocks(kanjiList);
 			}
 			else{
 				var v = kanjiList.length;
@@ -2588,7 +2588,7 @@ var WanikaniUtil = {
                             //update locks in localStorage 
                             //pass kanjilist into this function
                             //(don't shift things through storage unecessarily)
-                            SetReviewsUtil.refreshLocks();
+                            SetReviewsUtil.refreshLocks(kanjiList);
                         }
 						else{
                             var v = kanjiList.length;

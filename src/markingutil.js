@@ -410,11 +410,13 @@ var MarkingUtil = {
 						    if (this.hasOwnProperty(v.index)) {
 						    }
 						    else {
-						        this.push(v.index);
+						        this[v.index] = v;
 						    }
 						}, {});
-						MarkingUtil.showResults(MarkingUtil.localresults);
-						
+
+//						MarkingUtil.showResults(MarkingUtil.localresults);
+						MarkingUtil.showResults(localresults);
+
 						document.getElementById("WKSS-resultwindow").style.display = '';
 						console.log("showResults completed");
 
