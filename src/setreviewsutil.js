@@ -34,7 +34,7 @@ var SetReviewsUtil = {
 		var reviewList = [];
 
 		//check to see if there is vocab already in offline storage
-		if (localStorage.getItem('User-Vocab')) {
+		if (StorageUtil.getVocList()) {
 			var vocabList = StorageUtil.getVocList();
 			var now = Date.now();
 
@@ -119,7 +119,7 @@ var SetReviewsUtil = {
 
                 var newlist;
                 var srslist = [];
-                if (localStorage.getItem('User-Vocab')) {
+                if (StorageUtil.getVocList().length) {
                     var vocabList = StorageUtil.getVocList();
                     srslist = StorageUtil.getVocList();
                     newlist = vocabList.concat(add);
@@ -155,7 +155,7 @@ var SetReviewsUtil = {
 	*/
 	checkAdd: function(add) {
         var i = add.length;
-        if(localStorage.getItem('User-Vocab')) {    
+        if (StorageUtil.getVocList().length) {
             var vocabList = StorageUtil.getVocList();
             while(i--){
                 if (ObjectUtil.isItemValid(add[i]) &&
@@ -224,10 +224,11 @@ var SetReviewsUtil = {
 	},
 	/** Sets the locks on all Tasks in storage
 	*/
-	refreshLocks: function(){
-		var vocList = StorageUtil.getVocList().map(function(vocItem){
-			console.log("vocList[i] = setLocks(vocList[i]);");
-			vocItem = this.setLocks(vocItem);  
+    refreshLocks: function (kanjiList) {
+        console.groupCollapsed("Checking vocab for recent unlocks");
+        //this._kanjiList = kanjiList;
+        var vocList = StorageUtil.getVocList().map(function (vocItem) {
+			vocItem = this.setLocks(vocItem, kanjiList);
 			return vocItem;
 		}, this);
 		console.groupEnd();

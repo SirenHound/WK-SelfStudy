@@ -523,17 +523,22 @@ var MarkingUtil = {
 		return task;
     },
 	/** Display the results of the completed review in a popup.
-	* @param {Array.<Task>} completedReviews
+	* @param {Array.<Item>} itemList built from completed reviews
 	*/
-    showResults: function(completedReviews) {
+	showResults: function (itemList) {
 
-        console.log("completedReviews", completedReviews);
-        
-		completedReviews.forEach(function(stats, i, statsList){
-            console.log("stats",stats);
-            var altText = stats.level;//+stats.type;
+	    console.log("itemList", itemList);
 
-            if (stats.numWrong) {
+        document.getElementById("stats-a").innerHTML =  ""; //should do this when closing //--
+
+        itemList.forEach(function (item, i, itemList) {
+            console.log("item", item);
+            //var altText = stats.level;//+stats.type;
+
+            var altText = item.level + (item.numWrong ? (item.numWrong.Meaning ? " Meaning Wrong x" + item.numWrong.Meaning + "\n" : "") + (item.numWrong.Reading ? " Meaning Wrong x" + item.numWrong.Reading + "\n" : "") + (item.numWrong.Reverse ? " Meaning Wrong x" + item.numWrong.Reverse + "\n" : "") : "") +
+            (item.numCorrect ? (item.numCorrect.Meaning ? " Meaning Wrong x" + item.numCorrect.Meaning + "\n" : "") + (item.numCorrect.Reading ? " Meaning Wrong x" + item.numCorrect.Reading + "\n" : "") + (item.numCorrect.Reverse ? " Meaning Wrong x" + item.numCorrect.Reverse + "\n" : "") : "");
+
+      /*      if (stats.numWrong) {
                 if (stats.numWrong.Meaning)
                     altText = altText + " Meaning Wrong x"+stats.numWrong.Meaning +"\n";
                 if (stats.numWrong.Reading)
@@ -541,6 +546,7 @@ var MarkingUtil = {
                 if (stats.numWrong.Reverse)
                     altText = altText + " Reverse Wrong x"+stats.numWrong.Reverse +"\n";
 			}
+            
 			if (stats.numCorrect){
 				if (stats.numCorrect.Meaning)
 					altText = altText + " Meaning Correct x"+stats.numCorrect.Meaning +"\n";
@@ -549,6 +555,7 @@ var MarkingUtil = {
 				if (stats.numCorrect.Reverse)
 					altText = altText + " Reverse Correct x"+stats.numCorrect.Reverse +"\n";
 			}
+            */
             console.log(stats);
 
 			//TODO sort into apprentice, guru, etc
@@ -558,10 +565,10 @@ var MarkingUtil = {
 				" title='"+altText+"'>" + stats.kanji + "</span>";
 			
 			//map with side effects?
-            statsList[i] = MarkingUtil.updateSRS(stats);
+            itemList[i] = MarkingUtil.updateSRS(stats);
 
         }, this);
-        StorageUtil.localSet("User-Stats",completedReviews);
+		StorageUtil.localSet("User-Stats",[]);//completedReviews); //reset?
     },
 	startReview: function() {
         console.log("startReview()");
@@ -716,7 +723,8 @@ var MarkingUtil = {
             console.error("Error: indexes don't match");
         }
         return item;
-    },
+	},
+    localresults: [],
 	/**
 	* @param {Array.<Task>}
 	* @param {Task}
@@ -747,7 +755,7 @@ var MarkingUtil = {
 				var oldlen = reviewList.length;
 
 				//save the result 
-				var results = StorageUtil.localGet("User-Stats");
+				var results = StorageUtil.localGet("User-Stats")||[];
 				results.push(item);
 				localresults.push(item);
 				
@@ -819,7 +827,7 @@ var MarkingUtil = {
 		//and keystate true (answer being submitted)
 		//and cursor is focused in reviewfield
 		var reviewList = StorageUtil.localGet('User-Review')||[];
-		var localresults = [];
+		//var localresults = [];
 		console.log("reviewList (keyuphandler) types", reviewList.map(function(a){return a.type;}));
 		// No nulls or undefineds thanks
 		//reviewList = reviewList.filter(function(item) {return item;});
@@ -843,7 +851,7 @@ var MarkingUtil = {
 				
 				console.log("input:", input);
 				console.log("item:", item);
-				MarkingUtil.submitAnswer(reviewList, item, rnd, input, localresults);
+				MarkingUtil.submitAnswer(reviewList, item, rnd, input, MarkingUtil.localresults);
 				console.groupEnd();
 				
 			}
@@ -871,9 +879,8 @@ var MarkingUtil = {
 				}
 				else {
 					// no review stored in session, review is over
-					setTimeout(function (evt) {
-						console.groupCollapsed("Review session over, Timeout function showing results: [");
-						console.info("arguments", arguments);
+//					setTimeout(function (evt) {
+						console.groupCollapsed("Review session over, Function showing results: [");
 						document.getElementById("WKSS-selfstudy").style.display = 'none';
 						
 						StorageUtil.localRemove("User-Review");
@@ -882,20 +889,28 @@ var MarkingUtil = {
 						WanikaniDomUtil.removeClass(document.getElementById("rev-solution"), "info");
 						console.log("showResults");
 						
-						var statsList = StorageUtil.localGet('User-Stats')||[];
+//						var statsList = StorageUtil.localGet('User-Stats')||[];
 						
-			//			MarkingUtil.showResults(statsList);
-						MarkingUtil.showResults(localresults);
+				    //			MarkingUtil.showResults(statsList);
+				    // convert review tasks into items
+						var resultItems = MarkingUtil.localresults.filter(function (v, i, a) {
+						    if (this.hasOwnProperty(v.index)) {
+						    }
+						    else {
+						        this.push(v.index);
+						    }
+						}, {});
+						MarkingUtil.showResults(MarkingUtil.localresults);
 						
 						document.getElementById("WKSS-resultwindow").style.display = '';
 						console.log("showResults completed");
 
-						//*/  //clear session
-						sessionStorage.clear();
+				    //*/  //clear session
+						MarkingUtil.localresults = [];
 						reviewActive = false;
 						console.groupEnd();
 						console.log("]");
-					}, 1);
+					//}, 1);
 				}
 			}
 		}
@@ -1253,7 +1268,7 @@ var SetReviewsUtil = {
 		var reviewList = [];
 
 		//check to see if there is vocab already in offline storage
-		if (localStorage.getItem('User-Vocab')) {
+		if (StorageUtil.getVocList()) {
 			var vocabList = StorageUtil.getVocList();
 			var now = Date.now();
 
@@ -1338,7 +1353,7 @@ var SetReviewsUtil = {
 
                 var newlist;
                 var srslist = [];
-                if (localStorage.getItem('User-Vocab')) {
+                if (StorageUtil.getVocList().length) {
                     var vocabList = StorageUtil.getVocList();
                     srslist = StorageUtil.getVocList();
                     newlist = vocabList.concat(add);
@@ -1374,7 +1389,7 @@ var SetReviewsUtil = {
 	*/
 	checkAdd: function(add) {
         var i = add.length;
-        if(localStorage.getItem('User-Vocab')) {    
+        if (StorageUtil.getVocList().length) {
             var vocabList = StorageUtil.getVocList();
             while(i--){
                 if (ObjectUtil.isItemValid(add[i]) &&
@@ -1443,10 +1458,11 @@ var SetReviewsUtil = {
 	},
 	/** Sets the locks on all Tasks in storage
 	*/
-	refreshLocks: function(){
-		var vocList = StorageUtil.getVocList().map(function(vocItem){
-			console.log("vocList[i] = setLocks(vocList[i]);");
-			vocItem = this.setLocks(vocItem);  
+    refreshLocks: function (kanjiList) {
+        console.groupCollapsed("Checking vocab for recent unlocks");
+        //this._kanjiList = kanjiList;
+        var vocList = StorageUtil.getVocList().map(function (vocItem) {
+			vocItem = this.setLocks(vocItem, kanjiList);
 			return vocItem;
 		}, this);
 		console.groupEnd();
@@ -1815,34 +1831,39 @@ var isBeingRunLocally = window.document.location.protocol === "file:";
 var main = function(){
     "use strict";
 	
-	console.log("Browser: ", navigator.userAgent);
-	// Get the element to attach the menu to
-	var nav = window.document.location.protocol === "https:" ? WanikaniDomUtil.getNavBar() : document.body;
+    console.log("Browser: ", navigator.userAgent);
+    // Get the element to attach the menu to
+    var nav = window.document.location.protocol === "https:" ? WanikaniDomUtil.getNavBar() : document.body;
 
-	var mockjax = document.createElement("script");
-	mockjax.setAttribute('src', 'https://cdn.jsdelivr.net/jquery.mockjax/1.6.1/jquery.mockjax.js');
-	mockjax.setAttribute('type', 'text/javascript');
+    var mockjax = document.createElement("script");
+    mockjax.setAttribute('src', 'https://cdn.jsdelivr.net/jquery.mockjax/1.6.1/jquery.mockjax.js');
+    mockjax.setAttribute('type', 'text/javascript');
 
-	var wanakana = document.createElement("script");
-	wanakana.setAttribute('src', 'https://rawgit.com/WaniKani/WanaKana/master/lib/wanakana.js');
-	wanakana.setAttribute('type', 'text/javascript');
+    var wanakana = document.createElement("script");
+    wanakana.setAttribute('src', 'https://rawgit.com/WaniKani/WanaKana/master/lib/wanakana.js');
+    wanakana.setAttribute('type', 'text/javascript');
 	
 
-	var wanakanaLocal = document.createElement("script");
-	wanakanaLocal.setAttribute('src', 'wanakana.js');
-	wanakanaLocal.setAttribute('type', 'text/javascript');
+    var wanakanaLocal = document.createElement("script");
+    wanakanaLocal.setAttribute('src', 'wanakana.js');
+    wanakanaLocal.setAttribute('type', 'text/javascript');
 
-	if (typeof jQuery !== "undefined"){
-		document.head.insertBefore(mockjax, document.head.firstChild);
-	}
-	document.head.insertBefore(wanakana, document.head.firstChild);
+    if (typeof jQuery !== "undefined"){
+        document.head.insertBefore(mockjax, document.head.firstChild);
+    }
+    document.head.insertBefore(wanakana, document.head.firstChild);
 	
-	if (window.document.location.protocol === "file:") {
-	    document.head.insertBefore(wanakanaLocal, document.head.firstChild);
-	}
+    if (window.document.location.protocol === "file:") {
+        document.head.insertBefore(wanakanaLocal, document.head.firstChild);
+    }
 	
-	// TODO make sure selfStudyMenu has been built before adding
-	nav.appendChild(document.selfStudyMenu);
+    // TODO make sure selfStudyMenu has been built before adding
+    if (nav) {
+        nav.appendChild(document.selfStudyMenu);
+    }
+    else {
+        console.warn("No navbar found, self study button was not added.");
+    }
 
 	document.body.appendChild(userWindow);
 	document.getElementById("WKSS-user").style.display = 'none';
@@ -1879,7 +1900,7 @@ var main = function(){
 		document.getElementById("WKSS-editStatus").innerText = 'Ready to edit...';
 	});
 	addClickEvent(document.getElementById("ExportItemsBtn"), function () {
-		if (localStorage.getItem('User-Vocab')) {
+		if (StorageUtil.getVocList().length) {
 			document.getElementById("exportForm").reset();
 			var vocabList = StorageUtil.getVocList();
 			document.getElementById("exportArea").innerText = JSON.stringify(vocabList);
@@ -2093,9 +2114,9 @@ var windowObjects = require('./windowobjects.js');
 
 var autoFillUser = function(evt){
 	console.info(user.loggedInUser);
-			document.getElementById("userApi").val(user.loggedInUser._api);
+	document.getElementById("userApi").value = user.loggedInUser._api;
 	StorageUtil.saveUserApi(user.loggedInUser._api);
-	document.getElementById("WKSS-username").append(user.loggedInUser.getUsername());
+	document.getElementById("WKSS-username").innerText = user.loggedInUser.getUsername();
 };
 
 var addClickEvent = function(el, handler, cxt){

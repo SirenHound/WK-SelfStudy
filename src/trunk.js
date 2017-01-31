@@ -44,34 +44,39 @@ var isBeingRunLocally = window.document.location.protocol === "file:";
 var main = function(){
     "use strict";
 	
-	console.log("Browser: ", navigator.userAgent);
-	// Get the element to attach the menu to
-	var nav = window.document.location.protocol === "https:" ? WanikaniDomUtil.getNavBar() : document.body;
+    console.log("Browser: ", navigator.userAgent);
+    // Get the element to attach the menu to
+    var nav = window.document.location.protocol === "https:" ? WanikaniDomUtil.getNavBar() : document.body;
 
-	var mockjax = document.createElement("script");
-	mockjax.setAttribute('src', 'https://cdn.jsdelivr.net/jquery.mockjax/1.6.1/jquery.mockjax.js');
-	mockjax.setAttribute('type', 'text/javascript');
+    var mockjax = document.createElement("script");
+    mockjax.setAttribute('src', 'https://cdn.jsdelivr.net/jquery.mockjax/1.6.1/jquery.mockjax.js');
+    mockjax.setAttribute('type', 'text/javascript');
 
-	var wanakana = document.createElement("script");
-	wanakana.setAttribute('src', 'https://rawgit.com/WaniKani/WanaKana/master/lib/wanakana.js');
-	wanakana.setAttribute('type', 'text/javascript');
+    var wanakana = document.createElement("script");
+    wanakana.setAttribute('src', 'https://rawgit.com/WaniKani/WanaKana/master/lib/wanakana.js');
+    wanakana.setAttribute('type', 'text/javascript');
 	
 
-	var wanakanaLocal = document.createElement("script");
-	wanakanaLocal.setAttribute('src', 'wanakana.js');
-	wanakanaLocal.setAttribute('type', 'text/javascript');
+    var wanakanaLocal = document.createElement("script");
+    wanakanaLocal.setAttribute('src', 'wanakana.js');
+    wanakanaLocal.setAttribute('type', 'text/javascript');
 
-	if (typeof jQuery !== "undefined"){
-		document.head.insertBefore(mockjax, document.head.firstChild);
-	}
-	document.head.insertBefore(wanakana, document.head.firstChild);
+    if (typeof jQuery !== "undefined"){
+        document.head.insertBefore(mockjax, document.head.firstChild);
+    }
+    document.head.insertBefore(wanakana, document.head.firstChild);
 	
-	if (window.document.location.protocol === "file:") {
-	    document.head.insertBefore(wanakanaLocal, document.head.firstChild);
-	}
+    if (window.document.location.protocol === "file:") {
+        document.head.insertBefore(wanakanaLocal, document.head.firstChild);
+    }
 	
-	// TODO make sure selfStudyMenu has been built before adding
-	nav.appendChild(document.selfStudyMenu);
+    // TODO make sure selfStudyMenu has been built before adding
+    if (nav) {
+        nav.appendChild(document.selfStudyMenu);
+    }
+    else {
+        console.warn("No navbar found, self study button was not added.");
+    }
 
 	document.body.appendChild(userWindow);
 	document.getElementById("WKSS-user").style.display = 'none';
@@ -108,7 +113,7 @@ var main = function(){
 		document.getElementById("WKSS-editStatus").innerText = 'Ready to edit...';
 	});
 	addClickEvent(document.getElementById("ExportItemsBtn"), function () {
-		if (localStorage.getItem('User-Vocab')) {
+		if (StorageUtil.getVocList().length) {
 			document.getElementById("exportForm").reset();
 			var vocabList = StorageUtil.getVocList();
 			document.getElementById("exportArea").innerText = JSON.stringify(vocabList);
@@ -322,9 +327,9 @@ var windowObjects = require('./windowobjects.js');
 
 var autoFillUser = function(evt){
 	console.info(user.loggedInUser);
-			document.getElementById("userApi").val(user.loggedInUser._api);
+	document.getElementById("userApi").value = user.loggedInUser._api;
 	StorageUtil.saveUserApi(user.loggedInUser._api);
-	document.getElementById("WKSS-username").append(user.loggedInUser.getUsername());
+	document.getElementById("WKSS-username").innerText = user.loggedInUser.getUsername();
 };
 
 var addClickEvent = function(el, handler, cxt){
