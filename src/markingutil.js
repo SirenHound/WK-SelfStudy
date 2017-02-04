@@ -411,11 +411,12 @@ var MarkingUtil = {
 						    }
 						    else {
 						        this[v.index] = v;
+								return v;
 						    }
-						}, {});
+						}, []);
 
 //						MarkingUtil.showResults(MarkingUtil.localresults);
-						MarkingUtil.showResults(localresults);
+						MarkingUtil.showResults(resultItems);
 
 						document.getElementById("WKSS-resultwindow").style.display = '';
 						console.log("showResults completed");

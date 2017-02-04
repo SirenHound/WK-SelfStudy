@@ -897,11 +897,14 @@ var MarkingUtil = {
 						    if (this.hasOwnProperty(v.index)) {
 						    }
 						    else {
-						        this.push(v.index);
+						        this[v.index] = v;
+								return v;
 						    }
-						}, {});
-						MarkingUtil.showResults(MarkingUtil.localresults);
-						
+						}, []);
+
+//						MarkingUtil.showResults(MarkingUtil.localresults);
+						MarkingUtil.showResults(resultItems);
+
 						document.getElementById("WKSS-resultwindow").style.display = '';
 						console.log("showResults completed");
 
@@ -2566,22 +2569,21 @@ var WanikaniUtil = {
             if (!ObjectUtil.isEmpty(xhrk)){
                 xhrk.onreadystatechange = function() {
                     if (xhrk.readyState == 4){
-                        var kanjiList = this.handleReadyStateFour(xhrk,requestedItem);
+                        var serverResponse = this.handleReadyStateFour(xhrk,requestedItem);
 
                         if (requestedItem === 'kanji'){
+							var kanjiList = serverResponse;
                             StorageUtil.localSet('User-KanjiList', kanjiList);
                             console.log("kanjiList from server", kanjiList);
-                            //update locks in localStorage 
-                            //pass kanjilist into this function
-                            //(don't shift things through storage unecessarily)
+							// Put Kanji into list for checking vocabulary unlocks.
                             SetReviewsUtil.refreshLocks(kanjiList);
                         }
-						else{
-                            var v = kanjiList.length;
-                            console.log(v + " items found, attempting to import");
-                            while (v--){
-                                SetReviewsUtil.setVocItem(kanjiList[v]);
-                            }
+						else if (requestedItem === 'vocabulary'){
+							var vocabList = serverResponse;
+                            // Put Vocabulary into self study system?
+							vocabList.forEach(function(vocab){
+                                SetReviewsUtil.setVocItem(vocab);
+                            });
                         }
                     }
                 }.bind(this);
@@ -2607,12 +2609,12 @@ var WanikaniUtil = {
                 kanjiList.push({"character": "卒", "srs": "noMatchWK"});
                 kanjiList.push({"character": "無", "srs": "noMatchGuppy"});
 
-                console.log("Server responded with dummy kanjiList: \n"+JSON.stringify(kanjiList));
+                console.log("Testing with dummy kanjiList: \n"+JSON.stringify(kanjiList));
 
                 StorageUtil.localSet('User-KanjiList', kanjiList);
 
                 //update locks in localStorage
-                StorageUtil.refreshLocks();
+                StorageUtil.refreshLocks(kanjiList);
             }, 10000);
         }
 		console.groupEnd();
