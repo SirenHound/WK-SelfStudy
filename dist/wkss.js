@@ -526,6 +526,7 @@ var MarkingUtil = {
 	* @param {Array.<Item>} itemList built from completed reviews
 	*/
 	showResults: function (itemList) {
+	    //TODO sort into apprentice, guru, etc
 
 	    console.log("itemList", itemList);
 
@@ -533,42 +534,21 @@ var MarkingUtil = {
 
         itemList.forEach(function (item, i, itemList) {
             console.log("item", item);
-            //var altText = stats.level;//+stats.type;
 
             var altText = item.level + (item.numWrong ? (item.numWrong.Meaning ? " Meaning Wrong x" + item.numWrong.Meaning + "\n" : "") + (item.numWrong.Reading ? " Meaning Wrong x" + item.numWrong.Reading + "\n" : "") + (item.numWrong.Reverse ? " Meaning Wrong x" + item.numWrong.Reverse + "\n" : "") : "") +
-            (item.numCorrect ? (item.numCorrect.Meaning ? " Meaning Wrong x" + item.numCorrect.Meaning + "\n" : "") + (item.numCorrect.Reading ? " Meaning Wrong x" + item.numCorrect.Reading + "\n" : "") + (item.numCorrect.Reverse ? " Meaning Wrong x" + item.numCorrect.Reverse + "\n" : "") : "");
+            (item.numCorrect ? (item.numCorrect.Meaning ? " Meaning Correct x" + item.numCorrect.Meaning + "\n" : "") + (item.numCorrect.Reading ? " Meaning Correct x" + item.numCorrect.Reading + "\n" : "") + (item.numCorrect.Reverse ? " Meaning Correct x" + item.numCorrect.Reverse + "\n" : "") : "");
 
-      /*      if (stats.numWrong) {
-                if (stats.numWrong.Meaning)
-                    altText = altText + " Meaning Wrong x"+stats.numWrong.Meaning +"\n";
-                if (stats.numWrong.Reading)
-                    altText = altText + " Reading Wrong x"+stats.numWrong.Reading +"\n";
-                if (stats.numWrong.Reverse)
-                    altText = altText + " Reverse Wrong x"+stats.numWrong.Reverse +"\n";
-			}
-            
-			if (stats.numCorrect){
-				if (stats.numCorrect.Meaning)
-					altText = altText + " Meaning Correct x"+stats.numCorrect.Meaning +"\n";
-				if (stats.numCorrect.Reading)
-					altText = altText + " Reading Correct x"+stats.numCorrect.Reading +"\n";
-				if (stats.numCorrect.Reverse)
-					altText = altText + " Reverse Correct x"+stats.numCorrect.Reverse +"\n";
-			}
-            */
-            console.log(stats);
+            console.log(item);
 
-			//TODO sort into apprentice, guru, etc
 			document.getElementById("stats-a").innerHTML +=
 				"<span class=" +
-				(stats.numWrong? "\"rev-error\"":"\"rev-correct\"") +
-				" title='"+altText+"'>" + stats.kanji + "</span>";
+				(item.numWrong? "\"rev-error\"":"\"rev-correct\"") +
+				" title='"+altText+"'>" + item.kanji + "</span>";
 			
 			//map with side effects?
-            itemList[i] = MarkingUtil.updateSRS(stats);
+            itemList[i] = MarkingUtil.updateSRS(item);
 
         }, this);
-		StorageUtil.localSet("User-Stats",[]);//completedReviews); //reset?
     },
 	startReview: function() {
         console.log("startReview()");
@@ -578,8 +558,9 @@ var MarkingUtil = {
         var reviewList = StorageUtil.localGet('User-Review')||[];
         MarkingUtil.nextReview(reviewList);
     },
-
-	// Should be in SetReviewsUtil?
+    /** Sets up the next task for review
+    * @param {Array.<Task>} reviewList - Array of review objects
+    */
 	nextReview: function(reviewList) {
         //sets up the next item for review
         //uses functions:
@@ -587,12 +568,12 @@ var MarkingUtil = {
 
         var rnd = Math.floor(Math.random()*reviewList.length);
 		console.log("next random number", rnd);
-        var item = reviewList[rnd];
-		console.log("next item: ", item);
+        var task = reviewList[rnd];
+		console.log("next item: ", task);
         //StorageUtil.localSet('WKSS-item', item);
         StorageUtil.localSet('WKSS-rnd', rnd);
 		
-		MarkingUtil.setTask(item);
+		MarkingUtil.setTask(task);
 		
     //    playAudio();
     },
@@ -636,25 +617,19 @@ var MarkingUtil = {
 			document.getElementById("rev-input").setAttribute('lang','ja');
         }
 	},
-	markAnswer: function(item) {
-        //evaluate 'item' against the question.
-        // match by index
-        // get type of question
-        // determine if right or wrong and return result appropriately
-
-        //get the question
-        //var prompt = document.getElementById('rev-kanji').innerHTML.trim();
-        //get the answer
+    /** Evaluates the input against the correct answers with some tolerance.
+    * @param {Task} task - The task that forms the current query
+    * @returns {boolean} 
+    */
+	markAnswer: function(task) {
         var answer = document.getElementById("rev-input").value.toLowerCase();
         //get the index
         var index = document.getElementById('rev-index').innerHTML.trim();
         //get the question type
         var type  = document.getElementById('rev-type').innerHTML.trim();
 
-        //var vocab = localGet("User-Vocab");
-
         //get the item if it is in the current session
-        var storedItem = StorageUtil.localGet(item.index);
+        var storedItem = StorageUtil.localGet(task.index);
         if (storedItem){
             item.numCorrect = storedItem.numCorrect;
             item.numWrong = storedItem.numWrong;
@@ -727,19 +702,23 @@ var MarkingUtil = {
     localresults: [],
 	/**
 	* @param {Array.<Task>}
-	* @param {Task}
-	* @param {number}
 	* @param {string}
 	*/
-	submitAnswer: function(reviewList, item, rnd, input, localresults){
+    submitAnswer: function (reviewList, input, localresults) {
+
+        var rnd = StorageUtil.localGet('WKSS-rnd') || 0;
+
+        var task = reviewList[rnd];
+        console.log("submit answer task", task);
+        var vocList = StorageUtil.getVoclList();
+        var item = vocList[rnd];
+        console.log("submit answer vocList, item", vocList, item);
+
 		//was the input correct?
 		var correct = MarkingUtil.inputCorrect(input);
 		
-
 		//was the input forgiven?
-		var forgiven = (item.forgive.indexOf(input) !== -1);
-
-		//handle grading and storing solution
+		var forgiven = (task.forgive.indexOf(input) !== -1);
 
 		//disable input after submission
 		//document.getElementById('rev-input').disabled = true;
@@ -794,29 +773,6 @@ var MarkingUtil = {
 		item = MarkingUtil.markAnswer(item);
 
 		StorageUtil.localSet(item.index, item);
-
-/*
-		var found = false;
-
-		if (reviewList){
-			var i = reviewList.length;
-			while(i--){
-				if (reviewList[i].index == item.index) {
-					reviewList[i] = item;								//replace item if it exists
-					found = true;
-				}
-			}
-			if(found){
-				reviewList = ObjectUtil.saveToSortedList(reviewList,item);
-			}
-
-		}
-		else {
-			reviewList = [item];
-		}
-
-		StorageUtil.localSet("User-Review", JSON.stringify(reviewList));
-*/
 		//playAudio();
 
 		//answer submitted, next 'enter' proceeds with script
@@ -842,16 +798,11 @@ var MarkingUtil = {
 					return;
 				}
 
-				var rnd = StorageUtil.localGet('WKSS-rnd')||0;
-
-				var item = reviewList[rnd]; //StorageUtil.localGet('WKSS-item');
-
 				//-- starting implementation of forgiveness protocol
 				item.forgive = [];//"ゆるす"]; //placeholder (許す to forgive)
 				
 				console.log("input:", input);
-				console.log("item:", item);
-				MarkingUtil.submitAnswer(reviewList, item, rnd, input, MarkingUtil.localresults);
+				MarkingUtil.submitAnswer(reviewList, input, MarkingUtil.localresults);
 				console.groupEnd();
 				
 			}
