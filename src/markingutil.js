@@ -51,16 +51,10 @@ var MarkingUtil = {
             var altText = item.level + (item.numWrong ? (item.numWrong.Meaning ? " Meaning Wrong x" + item.numWrong.Meaning + "\n" : "") + (item.numWrong.Reading ? " Meaning Wrong x" + item.numWrong.Reading + "\n" : "") + (item.numWrong.Reverse ? " Meaning Wrong x" + item.numWrong.Reverse + "\n" : "") : "") +
             (item.numCorrect ? (item.numCorrect.Meaning ? " Meaning Correct x" + item.numCorrect.Meaning + "\n" : "") + (item.numCorrect.Reading ? " Meaning Correct x" + item.numCorrect.Reading + "\n" : "") + (item.numCorrect.Reverse ? " Meaning Correct x" + item.numCorrect.Reverse + "\n" : "") : "");
 
-            console.log(item);
-
 			document.getElementById("stats-a").innerHTML +=
 				"<span class=" +
 				(item.numWrong? "\"rev-error\"":"\"rev-correct\"") +
 				" title='"+altText+"'>" + item.kanji + "</span>";
-			
-			//map with side effects?
-            itemList[i] = MarkingUtil.updateSRS(item);
-
         }, this);
     },
 	startReview: function() {
@@ -132,7 +126,7 @@ var MarkingUtil = {
 	},
     /** Evaluates the input against the correct answers with some tolerance.
     * @param {Task} task - The task that forms the current query
-    * @returns {boolean} 
+    * @returns {Item} The item that the review relates to. 
     */
 	markAnswer: function(task) {
         var answer = document.getElementById("rev-input").value.toLowerCase();
@@ -142,75 +136,72 @@ var MarkingUtil = {
         var type  = document.getElementById('rev-type').innerHTML.trim();
 
         //get the item if it is in the current session
-        var storedItem = StorageUtil.localGet(task.index);
-        if (storedItem){
-            item.numCorrect = storedItem.numCorrect;
-            item.numWrong = storedItem.numWrong;
-        }
+        var item = StorageUtil.getVocList() && StorageUtil.getVocList()[task.index];
+        if (item) {
+            if (index == task.index) {//-------------
+                if (MarkingUtil.inputCorrect()) {
+                    console.log(answer + "/" + task.solution[0]);
+                    if (!item.numCorrect) {
+                        console.log("initialising numCorrect");
+                        item.numCorrect = {};
+                    }
 
-        if (index == item.index){//-------------
-            if (MarkingUtil.inputCorrect()){
-                console.log(answer+"/"+item.solution[0]);
-                if (!item.numCorrect){
-                    console.log("initialising numCorrect");
-                    item.numCorrect={};
+                    console.log("Correct: " + type);
+                    switch (type){
+                        case "Meaning":
+                            if (!item.numCorrect.Meaning)
+                                item.numCorrect.Meaning = 0;
+
+                            item.numCorrect.Meaning++;
+                            break;
+                    case "Reading":
+                        if (!item.numCorrect.Reading)
+                            item.numCorrect.Reading = 0;
+
+                        item.numCorrect.Reading++;
+                        break;
+                    case "Reverse":
+                        if (!item.numCorrect.Reverse)
+                            item.numCorrect.Reverse = 0;
+
+                        item.numCorrect.Reverse++;
+                        break;
+                    }
+
                 }
+                else {
+                    console.log(answer + "!=" + task.solution);
+                    if (!item.numWrong) {
+                        console.log("initialising numCorrect");
+                        item.numWrong = {};
+                    }
 
-                console.log("Correct: "+ type);
-                if (type == "Meaning"){
-                    if (!item.numCorrect.Meaning)
-                        item.numCorrect.Meaning = 0;
+                    console.log("Wrong: " + type);
+                    switch (type) {
+                        case "Meaning":
+                            if (!item.numWrong.Meaning)
+                                item.numWrong.Meaning = 0;
+                            item.numWrong.Meaning++;
+                            break;
+                        case "Reading":
+                            if (!item.numWrong.Reading)
+                                item.numWrong.Reading = 0;
 
-                    item.numCorrect.Meaning++;
+                            item.numWrong.Reading++;
+                            break;
+                        case "Reverse":
+                            if (!item.numWrong.Reverse)
+                                item.numWrong.Reverse = 0;
 
-                }
-                if (type == "Reading"){
-                    if (!item.numCorrect.Reading)
-                        item.numCorrect.Reading = 0;
-
-                    item.numCorrect.Reading++;
-                }
-
-                if (type == "Reverse"){
-                    if (!item.numCorrect.Reverse)
-                        item.numCorrect.Reverse = 0;
-
-                    item.numCorrect.Reverse++;
-                }
-
-            }
-			else{
-                console.log(answer+"!="+item.solution);
-                if (!item.numWrong){
-                    console.log("initialising numCorrect");
-                    item.numWrong={};
-                }
-
-                console.log("Wrong: "+ type);
-                switch (type){
-					case "Meaning":
-						if (!item.numWrong.Meaning)
-							item.numWrong.Meaning = 0;
-						item.numWrong.Meaning++;
-						break;
-					case "Reading":
-						if (!item.numWrong.Reading)
-							item.numWrong.Reading = 0;
-
-						item.numWrong.Reading++;
-						break;
-					case "Reverse":
-						if (!item.numWrong.Reverse)
-							item.numWrong.Reverse = 0;
-
-						item.numWrong.Reverse++;
+                            item.numWrong.Reverse++;
+                    }
                 }
             }
+            else {
+                console.error("Error: indexes don't match");
+            }
+            return item;
         }
-		else {
-            console.error("Error: indexes don't match");
-        }
-        return item;
 	},
     localresults: [],
 	/**
@@ -222,8 +213,11 @@ var MarkingUtil = {
         var rnd = StorageUtil.localGet('WKSS-rnd') || 0;
 
         var task = reviewList[rnd];
+        //-- starting implementation of forgiveness protocol
+        task.forgive = [];//"ゆるす"]; //placeholder (許す to forgive)
+
         console.log("submit answer task", task);
-        var vocList = StorageUtil.getVoclList();
+        var vocList = StorageUtil.getVocList();
         var item = vocList[rnd];
         console.log("submit answer vocList, item", vocList, item);
 
@@ -247,13 +241,13 @@ var MarkingUtil = {
 				var oldlen = reviewList.length;
 
 				//save the result 
-				var results = StorageUtil.localGet("User-Stats")||[];
-				results.push(item);
+				//var results = StorageUtil.localGet("User-Stats")||[];
+				//results.push(item);
 				localresults.push(item);
 				
 				
 				//--
-				StorageUtil.localSet("User-Stats", results);
+				//StorageUtil.localSet("User-Stats", results);
 				reviewList.splice(rnd, 1);
 
 				//replace shorter (by one) reviewList to session
@@ -283,13 +277,16 @@ var MarkingUtil = {
 			console.log("wrong answer");
 		}
 
-		item = MarkingUtil.markAnswer(item);
-
+		item = MarkingUtil.markAnswer(task);
+		console.warn("this should be an item not a task", item);
 		StorageUtil.localSet(item.index, item);
 		//playAudio();
 
 		//answer submitted, next 'enter' proceeds with script
 		submit = false;
+		vocList[rnd] = item;
+		return vocList;
+		//return localresults;
 	},
 	reviewKeyUpHandler: function (evt) {
 		//check if key press was 'enter' (keyCode 13) on the way up
@@ -299,7 +296,8 @@ var MarkingUtil = {
 		//var localresults = [];
 		console.log("reviewList (keyuphandler) types", reviewList.map(function(a){return a.type;}));
 		// No nulls or undefineds thanks
-		//reviewList = reviewList.filter(function(item) {return item;});
+	    //reviewList = reviewList.filter(function(item) {return item;});
+		var localResults;
 		if (evt.keyCode == 13){
 			if (submit) {
 				console.group("Answer being submitted.");
@@ -311,11 +309,9 @@ var MarkingUtil = {
 					return;
 				}
 
-				//-- starting implementation of forgiveness protocol
-				item.forgive = [];//"ゆるす"]; //placeholder (許す to forgive)
 				
 				console.log("input:", input);
-				MarkingUtil.submitAnswer(reviewList, input, MarkingUtil.localresults);
+				MarkingUtil.localresults = MarkingUtil.submitAnswer(reviewList, input, MarkingUtil.localresults);
 				console.groupEnd();
 				
 			}
@@ -327,7 +323,7 @@ var MarkingUtil = {
 
 				//there are still more reviews in session?
 				if (reviewList.length !== 0) {
-					setTimeout(function () {
+					//setTimeout(function () {
 						console.groupCollapsed("%cReview session continues...[", "color:#889944");
 
 						//cue up first remaining review
@@ -339,50 +335,42 @@ var MarkingUtil = {
 						document.getElementById("WKSS-selfstudy").style.display = '';//.fadeIn('fast');
 						console.groupEnd();
 						console.log("%c]", "color:#889944");
-					}, 1);
+					//}, 1);
 				}
 				else {
-					// no review stored in session, review is over
-//					setTimeout(function (evt) {
-						console.groupCollapsed("Review session over, Function showing results: [");
-						document.getElementById("WKSS-selfstudy").style.display = 'none';
-						
-						StorageUtil.localRemove("User-Review");
-						
-			//document.getElementById('rev-input').disabled = false;
-						WanikaniDomUtil.removeClass(document.getElementById("rev-solution"), "info");
-						console.log("showResults");
-						
-//						var statsList = StorageUtil.localGet('User-Stats')||[];
-						
-				    //			MarkingUtil.showResults(statsList);
-				    // convert review tasks into items
-						var resultItems = MarkingUtil.localresults.filter(function (v, i, a) {
-						    if (this.hasOwnProperty(v.index)) {
-						    }
-						    else {
-						        this[v.index] = v;
-								return v;
-						    }
-						}, []);
-
-//						MarkingUtil.showResults(MarkingUtil.localresults);
-						MarkingUtil.showResults(resultItems);
-
-						document.getElementById("WKSS-resultwindow").style.display = '';
-						console.log("showResults completed");
-
-				    //*/  //clear session
-						MarkingUtil.localresults = [];
-						reviewActive = false;
-						console.groupEnd();
-						console.log("]");
-					//}, 1);
+				    MarkingUtil.endReview(MarkingUtil.localresults);
 				}
 			}
 		}
 	},
-	/** Takes an array of strings and returns the portions before left brackets '(' but only for strings that have them. It is used to add synonym values to the answer list.
+	endReview: function(resultItems){
+	    // no review stored in session, review is over
+	    //					setTimeout(function (evt) {
+	    console.groupCollapsed("Review session over, Function showing results: [");
+	    document.getElementById("WKSS-selfstudy").style.display = 'none';
+						
+	    StorageUtil.localRemove("User-Review");
+						
+	    //document.getElementById('rev-input').disabled = false;
+	    WanikaniDomUtil.removeClass(document.getElementById("rev-solution"), "info");
+	    
+	    var itemList = resultItems.map(function (item) {
+	        return MarkingUtil.updateSRS(item);
+	    }, this);
+
+	    MarkingUtil.showResults(itemList);
+
+	    document.getElementById("WKSS-resultwindow").style.display = '';
+	    console.log("showResults completed");
+
+        //clear session
+	    MarkingUtil.localresults = [];
+	    reviewActive = false;
+	    console.groupEnd();
+	    console.log("]");
+	  
+	},
+    /** Takes an array of strings and returns the portions before left brackets '(' but only for strings that have them. It is used to add synonym values to the answer list.
 	* @param {Array.<string>} solution - An array of acceptable answers for the Task
 	* @returns {Array.<string>} Parts of the solution left of left bracket in strings where it exists
 	* @example unbracketSolution(["newspaper", "reading Stick (this text won't get through)"]) // ["reading stick"]
