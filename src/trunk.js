@@ -308,13 +308,7 @@ var WKSS_import = function () {
 /**  Review Items
 */
 var WKSS_review = function (evt) {
-	//is there a session waiting in storage?
-	if(StorageUtil.localGet('User-Review')) {
-
-		Array.prototype.forEach.call(document.getElementsByClassName("WKSS"), function(el){el.style.display = 'none';});
-		document.getElementById("WKSS-selfstudy").style.display = '';
-		MarkingUtil.startReview();
-	}
+	MarkingUtil.startReview();
 };
 
 //declare global values for keyup event

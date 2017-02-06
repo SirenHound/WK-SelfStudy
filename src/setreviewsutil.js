@@ -11,15 +11,18 @@ var WKSS_Settings = StorageUtil.localGet('WKSS-settings');
 */
 var SetReviewsUtil = {
 	reviewActive: false,
-	
+	reviewList:[],
 	endReviewSession: function () {
 		document.getElementById('selfStudyForm').reset();
 		this.reviewActive = false;
 	},
+
+    /** This is an event handler
+    */
 	generateReviewList: function(evt) {
 		//don't ]interfere with an active session
 		
-		if (this.reviewActive){
+		if (SetReviewsUtil.reviewActive){
 			console.log("generateReviewList args", arguments);
 			document.getElementById('user-review').innerHTML = "Review in Progress";
 			return;
@@ -80,16 +83,19 @@ var SetReviewsUtil = {
 						soonest = Math.min(soonest, next);
 					}
 				}//end if item is up for review
-			}, this);// end iterate through vocablist
+			});// end iterate through vocablist
 		}// end if localStorage
 		if (reviewList.length !== 0){
 			//store reviewList in current session
-			StorageUtil.localSet('User-Review', JSON.stringify(reviewList));
+//			StorageUtil.localSet('User-Review', JSON.stringify(reviewList));
 			console.log(reviewList);
 		}
 		else{
 			console.log("reviewList is empty: "+JSON.stringify(reviewList));
-			document.getElementById('user-review').innerHTML = soonest<Infinity? "Next Review in "+ObjectUtil.ms2str(soonest) : "No Reviews Available";
+
+			StorageUtil.localSet('User-Review', JSON.stringify(reviewList));
+
+			document.getElementById('user-review').innerHTML = soonest < Infinity ? "Next Review in " + ObjectUtil.ms2str(soonest) : "No Reviews Available";
 		}
 		var strReviews = numReviews.toString();
 
@@ -105,6 +111,7 @@ var SetReviewsUtil = {
 			var reviewString = (soonest !== void 0)? "<br/>\r\nMore to come in "+ObjectUtil.ms2str(soonest):"";
 			document.getElementById('user-review').innerHTML = "Review (" + strReviews + ")" + reviewString;
 		}
+		SetReviewsUtil.reviewList = reviewList;
 	},
 
 	importItemsHandler: function() {

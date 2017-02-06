@@ -108,7 +108,7 @@ var StorageUtil = {
 	/** Gets the list of user defined vocabulary items
 	*/
 	getVocList: function(){
-        var vocList = this.localGet(this.VOCAB_LABEL);
+        var vocList = this.localGet(this.VOCAB_LABEL)||[];
         vocList.forEach(function(item, i){
 			item.i = i; //set index for item (->out)
         }, this);

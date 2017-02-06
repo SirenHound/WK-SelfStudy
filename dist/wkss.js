@@ -489,6 +489,7 @@ var StorageUtil = require('./storageutil.js');
 var ObjectUtil = require('./objectutil.js');
 var SettingsUtil = require('./settingsutil.js');
 var WanikaniDomUtil = require('./wanikanidomutil.js');
+var SetReviewsUtil = require('./setreviewsutil.js');
 
 var submit = true;
 var MarkingUtil = {
@@ -546,11 +547,21 @@ var MarkingUtil = {
     },
 	startReview: function() {
         console.log("startReview()");
-        submit = true;
-        reviewActive = true;
-        //get the review 'list' from session storage, line up the first item in queue
-        var reviewList = StorageUtil.localGet('User-Review')||[];
-        MarkingUtil.nextReview(reviewList);
+	    //       var reviewList = StorageUtil.localGet('User-Review') || [];
+        var reviewList = SetReviewsUtil.reviewList;
+        if (reviewList.length) {
+
+            Array.prototype.forEach.call(document.getElementsByClassName("WKSS"), function (el) { el.style.display = 'none'; });
+            document.getElementById("WKSS-selfstudy").style.display = '';
+
+            submit = true;
+            reviewActive = true;
+            //get the review 'list' from session storage, line up the first item in queue
+            MarkingUtil.nextReview(reviewList);
+        }
+        else {
+            console.log("No reviews available.");
+        }
     },
     /** Sets up the next task for review
     * @param {Array.<Task>} reviewList - Array of review objects
@@ -574,8 +585,8 @@ var MarkingUtil = {
 	/** Populate the review window with the given task
 	*/
 	setTask: function(item){
-		var reviewList = StorageUtil.localGet('User-Review');
-		document.getElementById("RevNum").innerText = reviewList.length;
+	    var reviewList = SetReviewsUtil.reviewList;
+		document.getElementById("RevNum").innerText = reviewList.length; // is this even used?
 		
 		document.getElementById('rev-kanji').innerHTML = item.prompt;
         document.getElementById('rev-type').innerHTML = item.type;
@@ -740,7 +751,8 @@ var MarkingUtil = {
 				//replace shorter (by one) reviewList to session
 				if (reviewList.length !== 0) {
 					console.info("reviewList.length: "+ reviewList.length);
-					StorageUtil.localSet('User-Review', reviewList);
+				    //					StorageUtil.localSet('User-Review', reviewList);
+                    SetReviewsUtil.reviewList = reviewList;
 				}
 				else {
 					//reveiw over, delete sessionlist from session
@@ -766,7 +778,7 @@ var MarkingUtil = {
 
 		item = MarkingUtil.markAnswer(task);
 		console.warn("this should be an item not a task", item);
-		StorageUtil.localSet(item.index, item);
+		//StorageUtil.localSet(item.i, item); // (reviews are stored by revindex, will clash)
 		//playAudio();
 
 		//answer submitted, next 'enter' proceeds with script
@@ -779,7 +791,7 @@ var MarkingUtil = {
 		//check if key press was 'enter' (keyCode 13) on the way up
 		//and keystate true (answer being submitted)
 		//and cursor is focused in reviewfield
-		var reviewList = StorageUtil.localGet('User-Review')||[];
+	    var reviewList = SetReviewsUtil.reviewList;// StorageUtil.localGet('User-Review')||[];
 		//var localresults = [];
 		console.log("reviewList (keyuphandler) types", reviewList.map(function(a){return a.type;}));
 		// No nulls or undefineds thanks
@@ -804,9 +816,6 @@ var MarkingUtil = {
 			}
 			else {
 				console.log("keystat = " + submit);
-
-				//Repopulate reviewList
-				reviewList = reviewList.length? reviewList : StorageUtil.localGet('User-Review')||[];
 
 				//there are still more reviews in session?
 				if (reviewList.length !== 0) {
@@ -844,7 +853,7 @@ var MarkingUtil = {
 	    var itemList = resultItems.map(function (item) {
 	        return MarkingUtil.updateSRS(item);
 	    }, this);
-
+	    StorageUtil.setVocList(itemList);
 	    MarkingUtil.showResults(itemList);
 
 	    document.getElementById("WKSS-resultwindow").style.display = '';
@@ -919,7 +928,7 @@ var MarkingUtil = {
 };
 
 module.exports = MarkingUtil;
-},{"./objectutil.js":8,"./settingsutil.js":13,"./storageutil.js":14,"./wanikanidomutil.js":17}],8:[function(require,module,exports){
+},{"./objectutil.js":8,"./setreviewsutil.js":12,"./settingsutil.js":13,"./storageutil.js":14,"./wanikanidomutil.js":17}],8:[function(require,module,exports){
 var ObjectUtil = {
     /** Validates a task object
 	* @param {Task} add - The Task being verified
@@ -1187,15 +1196,18 @@ var WKSS_Settings = StorageUtil.localGet('WKSS-settings');
 */
 var SetReviewsUtil = {
 	reviewActive: false,
-	
+	reviewList:[],
 	endReviewSession: function () {
 		document.getElementById('selfStudyForm').reset();
 		this.reviewActive = false;
 	},
+
+    /** This is an event handler
+    */
 	generateReviewList: function(evt) {
 		//don't ]interfere with an active session
 		
-		if (this.reviewActive){
+		if (SetReviewsUtil.reviewActive){
 			console.log("generateReviewList args", arguments);
 			document.getElementById('user-review').innerHTML = "Review in Progress";
 			return;
@@ -1256,16 +1268,19 @@ var SetReviewsUtil = {
 						soonest = Math.min(soonest, next);
 					}
 				}//end if item is up for review
-			}, this);// end iterate through vocablist
+			});// end iterate through vocablist
 		}// end if localStorage
 		if (reviewList.length !== 0){
 			//store reviewList in current session
-			StorageUtil.localSet('User-Review', JSON.stringify(reviewList));
+//			StorageUtil.localSet('User-Review', JSON.stringify(reviewList));
 			console.log(reviewList);
 		}
 		else{
 			console.log("reviewList is empty: "+JSON.stringify(reviewList));
-			document.getElementById('user-review').innerHTML = soonest<Infinity? "Next Review in "+ObjectUtil.ms2str(soonest) : "No Reviews Available";
+
+			StorageUtil.localSet('User-Review', JSON.stringify(reviewList));
+
+			document.getElementById('user-review').innerHTML = soonest < Infinity ? "Next Review in " + ObjectUtil.ms2str(soonest) : "No Reviews Available";
 		}
 		var strReviews = numReviews.toString();
 
@@ -1281,6 +1296,7 @@ var SetReviewsUtil = {
 			var reviewString = (soonest !== void 0)? "<br/>\r\nMore to come in "+ObjectUtil.ms2str(soonest):"";
 			document.getElementById('user-review').innerHTML = "Review (" + strReviews + ")" + reviewString;
 		}
+		SetReviewsUtil.reviewList = reviewList;
 	},
 
 	importItemsHandler: function() {
@@ -1715,7 +1731,7 @@ var StorageUtil = {
 	/** Gets the list of user defined vocabulary items
 	*/
 	getVocList: function(){
-        var vocList = this.localGet(this.VOCAB_LABEL);
+        var vocList = this.localGet(this.VOCAB_LABEL)||[];
         vocList.forEach(function(item, i){
 			item.i = i; //set index for item (->out)
         }, this);
@@ -2038,13 +2054,7 @@ var WKSS_import = function () {
 /**  Review Items
 */
 var WKSS_review = function (evt) {
-	//is there a session waiting in storage?
-	if(StorageUtil.localGet('User-Review')) {
-
-		Array.prototype.forEach.call(document.getElementsByClassName("WKSS"), function(el){el.style.display = 'none';});
-		document.getElementById("WKSS-selfstudy").style.display = '';
-		MarkingUtil.startReview();
-	}
+	MarkingUtil.startReview();
 };
 
 //declare global values for keyup event
