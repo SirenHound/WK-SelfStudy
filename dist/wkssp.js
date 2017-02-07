@@ -12,7 +12,7 @@
 // @run-at      document-end
 // @grant       none
 // ==/UserScript==
-/*! wkselfstudy - v0.2.1 - 2017-02-07 */(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+/*! wkselfstudy - v0.2.1 - 2017-02-06 */(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 /** Builds a node element with an id and className and other attributes if provided
 * @param {string} type - The type of element to create ('div', 'p', etc...)
 * @param {object} [options]
@@ -3222,7 +3222,8 @@ cssObjectToString('#edit', {
 	height: windowConfig.edit.height,
 	marginLeft: -windowConfig.edit.width/2
 }) +
-cssObjectToString('#selfstudy', {	left: "50%",
+cssObjectToString('#selfstudy', {
+	left: "50%",
 	width: windowConfig.study.width,
 	height: windowConfig.study.height,
 	marginLeft: -windowConfig.study.width/2
@@ -3297,3 +3298,4 @@ cssObjectToString('#rev-input', {
 module.exports = classWKSS;
 //module.exports = wkstyleCSS;
 },{"./windowconfig.js":19}]},{},[15]);
+>>>>>>> Stashed changes
