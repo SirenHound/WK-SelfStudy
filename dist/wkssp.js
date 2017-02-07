@@ -507,35 +507,32 @@ var SetReviewsUtil = require('./setreviewsutil.js');
 
 var submit = true;
 var MarkingUtil = {
-	/** Updates the srs variables of a task
-	* @param {Task} task
-	* task.due
-	* task.date
-	* {Object} task.numWrong
-	* {number} task.index
+	/** Updates the srs variables of a item
+	* @param {Item} item
+	* @returns {Item} The item with updated properties
 	*/
-	updateSRS: function(task) {
+	updateSRS: function(item) {
         var now = Date.now();
-        if (task.due < now){ //double check that the item was really up for review and hasn't found its way into the list from an old session or another tab.
-            if(!task.numWrong && task.level < 9) {//all correct (none wrong)
-                task.level++;
+        if (item.due < now){ //double check that the item was really up for review and hasn't found its way into the list from an old session or another tab.
+            if(!item.numWrong && item.level < 9) {//all correct (none wrong)
+                item.level++;
             }
             else {
-                task.numWrong = {};
+                item.numWrong = {};
                 //Adapted from WaniKani's srs to authentically mimic level downs
-                var totalWrong = (task.numWrong.Meaning||0)+(task.numWrong.Reading||0)+(task.numWrong.Reverse||0);
-                var t = task.level;
+                var totalWrong = (item.numWrong.Meaning||0)+(item.numWrong.Reading||0)+(item.numWrong.Reverse||0);
+                var t = item.level;
                 var r= (t>=5? 2:1)*Math.round(totalWrong/2);
                 var n=t-r<1?1:t-r;
 
-                task.level = n;//don't stay on 'started'
+                item.level = n;//don't stay on 'started'
             }
-            task.date = now;
-            task.levelStartDate = now;
-            task.due = now + SettingsUtil.srsObject[task.level].duration;
-            console.log("Next review in "+ObjectUtil.ms2str(SettingsUtil.srsObject[task.level].duration));
+            item.date = now;
+            item.levelStartDate = now;
+            item.due = now + SettingsUtil.srsObject[item.level].duration;
+            console.log("Next review in "+ObjectUtil.ms2str(SettingsUtil.srsObject[item.level].duration));
         }
-		return task;
+		return item;
     },
 	/** Display the results of the completed review in a popup.
 	* @param {Array.<Item>} itemList built from completed reviews
@@ -1764,17 +1761,7 @@ module.exports = StorageUtil;
 
 
  
- /** Describes any object that can be learned, includes IRadical, IKanji, and IVocabulary
- * @typedef {Object} Item
- * @property {boolean|string} locked - locked
- * @property {boolean|string} manualLock - manualLock
- * @property {number} due - The time this Item becomes available for review
- * @property {number} date - The time this Item was set
- * @property {Object} numWrong
- * @property {Object} numRight
- * @property {number} index
- */
- /** Describes a single review task
+/** Describes a single review task
  * @typedef {Object} Task
  * @property {string} type
  * @property {string} prompt

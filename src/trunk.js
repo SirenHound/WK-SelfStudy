@@ -4,17 +4,7 @@
 
 
  
- /** Describes any object that can be learned, includes IRadical, IKanji, and IVocabulary
- * @typedef {Object} Item
- * @property {boolean|string} locked - locked
- * @property {boolean|string} manualLock - manualLock
- * @property {number} due - The time this Item becomes available for review
- * @property {number} date - The time this Item was set
- * @property {Object} numWrong
- * @property {Object} numRight
- * @property {number} index
- */
- /** Describes a single review task
+/** Describes a single review task
  * @typedef {Object} Task
  * @property {string} type
  * @property {string} prompt

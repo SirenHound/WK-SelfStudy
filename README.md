@@ -1,3 +1,12 @@
+## Classes
+
+<dl>
+<dt><a href="#Item">Item</a></dt>
+<dd><p>{Object} Item
+]</p>
+</dd>
+</dl>
+
 ## Members
 
 <dl>
@@ -45,14 +54,41 @@ Can use &#39;error.stack&#39;, not cross-browser (though it should work on Firef
 ## Typedefs
 
 <dl>
-<dt><a href="#Item">Item</a> : <code>Object</code></dt>
-<dd><p>Describes any object that can be learned, includes IRadical, IKanji, and IVocabulary</p>
-</dd>
 <dt><a href="#Task">Task</a> : <code>Object</code></dt>
 <dd><p>Describes a single review task</p>
 </dd>
 </dl>
 
+<a name="Item"></a>
+
+## Item
+{Object} Item
+]
+
+**Kind**: global class  
+
+* [Item](#Item)
+    * [new Item()](#new_Item_new)
+    * [._locked](#Item+_locked)
+    * [._manualLock](#Item+_manualLock)
+
+<a name="new_Item_new"></a>
+
+### new Item()
+Any item that can be learned, to include implementations IRadical, IKanji, and IVocabulary
+
+<a name="Item+_locked"></a>
+
+### item._locked
+boolean|string
+
+**Kind**: instance property of <code>[Item](#Item)</code>  
+<a name="Item+_manualLock"></a>
+
+### item._manualLock
+boolean
+
+**Kind**: instance property of <code>[Item](#Item)</code>  
 <a name="SetReviewsUtil"></a>
 
 ## SetReviewsUtil
@@ -224,24 +260,6 @@ Error handlingCan use 'error.stack', not cross-browser (though it should work o
 Prepares the script
 
 **Kind**: global function  
-<a name="Item"></a>
-
-## Item : <code>Object</code>
-Describes any object that can be learned, includes IRadical, IKanji, and IVocabulary
-
-**Kind**: global typedef  
-**Properties**
-
-| Name | Type | Description |
-| --- | --- | --- |
-| locked | <code>boolean</code> &#124; <code>string</code> | locked |
-| manualLock | <code>boolean</code> &#124; <code>string</code> | manualLock |
-| due | <code>number</code> | The time this Item becomes available for review |
-| date | <code>number</code> | The time this Item was set |
-| numWrong | <code>Object</code> |  |
-| numRight | <code>Object</code> |  |
-| index | <code>number</code> |  |
-
 <a name="Task"></a>
 
 ## Task : <code>Object</code>
