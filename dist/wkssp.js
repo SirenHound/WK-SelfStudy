@@ -12,7 +12,7 @@
 // @run-at      document-end
 // @grant       none
 // ==/UserScript==
-/*! wkselfstudy - v0.2.1 - 2017-02-06 */(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+/*! wkselfstudy - v0.2.1 - 2017-02-07 */(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 /** Builds a node element with an id and className and other attributes if provided
 * @param {string} type - The type of element to create ('div', 'p', etc...)
 * @param {object} [options]
@@ -1764,11 +1764,23 @@ module.exports = StorageUtil;
 
 
  
- /** Describes any object that can be reviewed or learned, includes IRadical, IKanji, and IVocabulary
- * @typedef {Object} Task
+ /** Describes any object that can be learned, includes IRadical, IKanji, and IVocabulary
+ * @typedef {Object} Item
  * @property {boolean|string} locked - locked
  * @property {boolean|string} manualLock - manualLock
+ * @property {number} due - The time this Item becomes available for review
+ * @property {number} date - The time this Item was set
+ * @property {Object} numWrong
+ * @property {Object} numRight
+ * @property {number} index
  */
+ /** Describes a single review task
+ * @typedef {Object} Task
+ * @property {string} type
+ * @property {string} prompt
+ * @property {Array.<string>} solution
+ */
+ 
 
 //GM_addStyle shim for compatibility with greasemonkey
 var gM_addStyle = function(CssString){

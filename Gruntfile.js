@@ -1,6 +1,13 @@
 module.exports = function(grunt){
 	grunt.initConfig({
 		pkg: grunt.file.readJSON('package.json'),
+		jsdoc2md: {
+			oneOutputFile: {
+				src: ['src/*.js'],
+				dest: 'README.md'
+			}
+		},
+
 		concat:{
 			options: {
 			  stripBanners: true,
@@ -77,12 +84,15 @@ module.exports = function(grunt){
 			}
 		}
 	});
+
+	grunt.loadNpmTasks('grunt-jsdoc-to-markdown');
 	grunt.loadNpmTasks('grunt-browserify');
 	grunt.loadNpmTasks('grunt-contrib-jshint');
 	grunt.loadNpmTasks('grunt-contrib-concat');
 	grunt.registerTask('default', [
 		//'dependo',
 		'jshint',
+		'jsdoc2md',
 		'browserify:main',
 		'concat'
 	]);

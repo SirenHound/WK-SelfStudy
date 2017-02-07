@@ -23,6 +23,8 @@
     "grunt-cli": "^1.2.0",
     "grunt-contrib-concat": "^1.0.1",
     "grunt-contrib-jshint": "^1.1.0",
+    "grunt-jsdoc-to-markdown": "^2.0.0",
+    "jsdoc-to-markdown": "^2.0.1",
     "phantom": "^4.0.0"
   }
 }
