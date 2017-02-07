@@ -507,32 +507,35 @@ var SetReviewsUtil = require('./setreviewsutil.js');
 
 var submit = true;
 var MarkingUtil = {
-	/** Updates the srs variables of a item
-	* @param {Item} item
-	* @returns {Item} The item with updated properties
+	/** Updates the srs variables of a task
+	* @param {Task} task
+	* task.due
+	* task.date
+	* {Object} task.numWrong
+	* {number} task.index
 	*/
-	updateSRS: function(item) {
+	updateSRS: function(task) {
         var now = Date.now();
-        if (item.due < now){ //double check that the item was really up for review and hasn't found its way into the list from an old session or another tab.
-            if(!item.numWrong && item.level < 9) {//all correct (none wrong)
-                item.level++;
+        if (task.due < now){ //double check that the item was really up for review and hasn't found its way into the list from an old session or another tab.
+            if(!task.numWrong && task.level < 9) {//all correct (none wrong)
+                task.level++;
             }
             else {
-                item.numWrong = {};
+                task.numWrong = {};
                 //Adapted from WaniKani's srs to authentically mimic level downs
-                var totalWrong = (item.numWrong.Meaning||0)+(item.numWrong.Reading||0)+(item.numWrong.Reverse||0);
-                var t = item.level;
+                var totalWrong = (task.numWrong.Meaning||0)+(task.numWrong.Reading||0)+(task.numWrong.Reverse||0);
+                var t = task.level;
                 var r= (t>=5? 2:1)*Math.round(totalWrong/2);
                 var n=t-r<1?1:t-r;
 
-                item.level = n;//don't stay on 'started'
+                task.level = n;//don't stay on 'started'
             }
-            item.date = now;
-            item.levelStartDate = now;
-            item.due = now + SettingsUtil.srsObject[item.level].duration;
-            console.log("Next review in "+ObjectUtil.ms2str(SettingsUtil.srsObject[item.level].duration));
+            task.date = now;
+            task.levelStartDate = now;
+            task.due = now + SettingsUtil.srsObject[task.level].duration;
+            console.log("Next review in "+ObjectUtil.ms2str(SettingsUtil.srsObject[task.level].duration));
         }
-		return item;
+		return task;
     },
 	/** Display the results of the completed review in a popup.
 	* @param {Array.<Item>} itemList built from completed reviews
@@ -727,7 +730,7 @@ var MarkingUtil = {
 
         console.log("submit answer task", task);
         var vocList = StorageUtil.getVocList();
-        var item = vocList[rnd];
+        var item = vocList[task.index];
         console.log("submit answer vocList, item", vocList, item);
 
 		//was the input correct?
@@ -794,7 +797,7 @@ var MarkingUtil = {
 
 		//answer submitted, next 'enter' proceeds with script
 		submit = false;
-		vocList[rnd] = item;
+		vocList[task.index] = item;
 		return vocList;
 		//return localresults;
 	},
@@ -1761,13 +1764,11 @@ module.exports = StorageUtil;
 
 
  
-/** Describes a single review task
+ /** Describes any object that can be reviewed or learned, includes IRadical, IKanji, and IVocabulary
  * @typedef {Object} Task
- * @property {string} type
- * @property {string} prompt
- * @property {Array.<string>} solution
+ * @property {boolean|string} locked - locked
+ * @property {boolean|string} manualLock - manualLock
  */
- 
 
 //GM_addStyle shim for compatibility with greasemonkey
 var gM_addStyle = function(CssString){
@@ -1873,7 +1874,7 @@ var main = function(){
 	});
 	addClickEvent(document.getElementById("ExportItemsBtn"), function () {
 		if (StorageUtil.getVocList().length) {
-			document.getElementById("exportForm").reset();
+			document.getElementById("WKSS-exportForm").reset();
 			var vocabList = StorageUtil.getVocList();
 			document.getElementById("exportArea").innerText = JSON.stringify(vocabList);
 			document.getElementById("exportStatus").innerText = "Copy this text and share it with others!";
@@ -1895,7 +1896,7 @@ var main = function(){
 	});
 	addClickEvent(document.getElementById("WKSS-exportCloseBtn"), function () {
 		document.getElementById("export").style.display = 'none';
-		document.getElementById("exportForm").reset();
+		document.getElementById("WKSS-exportForm").reset();
 		document.getElementById("exportArea").innerText = "";
 		document.getElementById("exportStatus").innerText = 'Ready to export..';
 	});

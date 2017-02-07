@@ -4,13 +4,11 @@
 
 
  
-/** Describes a single review task
+ /** Describes any object that can be reviewed or learned, includes IRadical, IKanji, and IVocabulary
  * @typedef {Object} Task
- * @property {string} type
- * @property {string} prompt
- * @property {Array.<string>} solution
+ * @property {boolean|string} locked - locked
+ * @property {boolean|string} manualLock - manualLock
  */
- 
 
 //GM_addStyle shim for compatibility with greasemonkey
 var gM_addStyle = function(CssString){
@@ -116,7 +114,7 @@ var main = function(){
 	});
 	addClickEvent(document.getElementById("ExportItemsBtn"), function () {
 		if (StorageUtil.getVocList().length) {
-			document.getElementById("exportForm").reset();
+			document.getElementById("WKSS-exportForm").reset();
 			var vocabList = StorageUtil.getVocList();
 			document.getElementById("exportArea").innerText = JSON.stringify(vocabList);
 			document.getElementById("exportStatus").innerText = "Copy this text and share it with others!";
@@ -138,7 +136,7 @@ var main = function(){
 	});
 	addClickEvent(document.getElementById("WKSS-exportCloseBtn"), function () {
 		document.getElementById("export").style.display = 'none';
-		document.getElementById("exportForm").reset();
+		document.getElementById("WKSS-exportForm").reset();
 		document.getElementById("exportArea").innerText = "";
 		document.getElementById("exportStatus").innerText = 'Ready to export..';
 	});
