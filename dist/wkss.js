@@ -1228,7 +1228,7 @@ var SetReviewsUtil = {
 
 			//for each vocab in storage, get the amount of time vocab has lived
 			vocabList.forEach(function(task, i){
-				var due = task.date + SettingsUtil.srsObject[task.level].duration;
+			    var due = task.due; //task.date + SettingsUtil.srsObject[task.level].duration;
 
 				// if item is unlocked and unburned
 				if (task.level < 9 &&
